@@ -10,7 +10,7 @@
 namespace clib {
 
     cparser::cparser(string_t str)
-            : lexer(str) {}
+        : lexer(str) {}
 
     ast_node *cparser::parse() {
         // 清空词法分析结果
@@ -52,7 +52,7 @@ namespace clib {
 
     void cparser::program() {
         next();
-        ast.add_child(lambda());
+        ast.add_child(lambda(false));
         if (!lexer.is_type(l_end)) {
             error("incomplete call");
         }
@@ -89,14 +89,27 @@ namespace clib {
         throw std::exception();
     }
 
-    ast_node *cparser::lambda() {
-        match_operator(op_lparan);
-        auto node = ast.new_node(ast_lambda);
-        while (!lexer.is_operator(op_rparan)) {
-            cast::set_child(node, object());
+    ast_node *cparser::lambda(bool paran) {
+        if (paran) {
+            match_operator(op_lparan);
+            auto node = ast.new_node(ast_sexpr);
+            while (!lexer.is_operator(op_rparan)) {
+                cast::set_child(node, object());
+            }
+            match_operator(op_rparan);
+            return node;
+        } else {
+            auto child = object();
+            if (lexer.is_type(l_end)) {
+                return child;
+            }
+            auto node = ast.new_node(ast_sexpr);
+            cast::set_child(node, child);
+            while (!lexer.is_type(l_end)) {
+                cast::set_child(node, object());
+            }
+            return node;
         }
-        match_operator(op_rparan);
-        return node;
     }
 
     ast_node *cparser::object() {

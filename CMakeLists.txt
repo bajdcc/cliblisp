@@ -14,4 +14,5 @@ add_executable(cliblisp
         cparser.cpp
         cast.h
         cast.cpp
-        )
+        cvm.cpp
+        cvm.h)

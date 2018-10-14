@@ -15,7 +15,7 @@ namespace clib {
 
     enum ast_t {
         ast_root,
-        ast_lambda,
+        ast_sexpr,
         ast_literal,
         ast_string,
         ast_char,
@@ -86,7 +86,7 @@ namespace clib {
 
         void set_id(ast_node *node, const string_t &str);
         void set_str(ast_node *node, const string_t &str);
-        static std::string display_str(ast_node *node);
+        static std::string display_str(const char *str);
 
         void to(ast_to_t type);
 

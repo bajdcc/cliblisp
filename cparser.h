@@ -26,7 +26,7 @@ namespace clib {
         void next();
 
         void program();
-        ast_node *lambda();
+        ast_node *lambda(bool paran = true);
         ast_node *object();
 
     private:

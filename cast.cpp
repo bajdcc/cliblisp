@@ -118,9 +118,9 @@ namespace clib {
         node->data._string = s;
     }
 
-    std::string cast::display_str(ast_node *node) {
+    std::string cast::display_str(const char *str) {
         std::stringstream ss;
-        for (auto c = node->data._string; *c != 0; c++) {
+        for (auto c = str; *c != 0; c++) {
             if (isprint(*c)) {
                 ss << *c;
             } else {
@@ -165,7 +165,7 @@ namespace clib {
             case ast_root: // 根结点，全局声明
                 ast_recursion(node->child, level, os, rec);
                 break;
-            case ast_lambda:
+            case ast_sexpr:
                 os << '(';
                 ast_recursion(node->child, level + 1, os, rec);
                 os << ')';
@@ -174,7 +174,7 @@ namespace clib {
                 os << node->data._string;
                 break;
             case ast_string:
-                os << '"' << display_str(node) << '"';
+                os << '"' << display_str(node->data._string) << '"';
                 break;
             case ast_char:
                 if (isprint(node->data._char))
@@ -215,7 +215,7 @@ namespace clib {
                 break;
         }
         if (node->parent) {
-            if (node->parent->flag == ast_lambda && node->next != node->parent->child) {
+            if (node->parent->flag == ast_sexpr && node->next != node->parent->child) {
                 os << ' ';
             }
         }
