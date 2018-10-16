@@ -7,6 +7,7 @@
 #define CLIBLISP_MEMORY_H
 
 #include <cassert>
+#include <vector>
 #include "types.h"
 
 namespace clib {
@@ -52,6 +53,7 @@ namespace clib {
     // 原始内存池
     template<class Allocator, size_t DefaultSize = Allocator::DEFAULT_ALLOC_BLOCK_SIZE>
     class legacy_memory_pool {
+    public:
         // 块
         struct block {
             size_t size; // 数据部分的大小
@@ -62,17 +64,18 @@ namespace clib {
 
         // 块参数
         enum block_flag {
-            BLOCK_USING = 0
+            BLOCK_USING = 0,
+            BLOCK_MARK = 1,
         };
-
-        // 内存管理接口
-        Allocator allocator;
 
         // 块的元信息部分的大小
         static const size_t BLOCK_SIZE = sizeof(block);
         // 块大小掩码
         static const uint BLOCK_SIZE_MASK = BLOCK_SIZE - 1;
 
+    private:
+        // 内存管理接口
+        Allocator allocator;
         // 块链表头指针
         block *block_head;
         // 用于循环遍历的指针
@@ -106,9 +109,9 @@ namespace clib {
         }
 
         // 二块合并
-        static size_t block_merge(block *blk, block *next) {
-            auto tmp = next->size + 1;
-            next->prev = blk;
+        static size_t block_merge(block *blk, block *next, size_t size) {
+            auto tmp = size;
+            next->next->prev = blk;
             blk->size += tmp;
             blk->next = next->next;
             return tmp;
@@ -116,9 +119,9 @@ namespace clib {
 
         // 三块合并
         static size_t block_merge(block *prev, block *blk, block *next) {
-            auto tmp = blk->size + next->size + 2;
-            next->prev = prev;
-            prev->size += tmp;
+            auto tmp = blk->size + 1;
+            next->next->prev = prev;
+            prev->size += tmp + next->size + 1;
             prev->next = next->next;
             return tmp;
         }
@@ -209,7 +212,7 @@ namespace clib {
 
         // 释放内存
         bool _free(void *p) {
-            block *blk = static_cast<block *>(p);
+            auto blk = static_cast<block *>(p);
             --blk; // 自减得到块的元信息头
             if (!verify_address(blk))
                 return false;
@@ -232,13 +235,16 @@ namespace clib {
                     block_set_flag(blk, BLOCK_USING, 0);
                     break;
                 case 1:
-                    block_available_size += block_merge(blk, blk->next);
+                    block_available_size += block_merge(blk, blk->next, blk->size + 1);
+                    block_set_flag(blk, BLOCK_USING, 0);
                     break;
                 case 2:
-                    block_available_size += block_merge(blk->prev, blk);
+                    block_available_size += block_merge(blk->prev, blk, blk->size + 1);
                     break;
                 case 3:
                     block_available_size += block_merge(blk->prev, blk, blk->next);
+                    if (blk->prev == blk->prev->next)
+                        _init();
                     break;
                 default:
                     break;
@@ -273,7 +279,6 @@ namespace clib {
         }
 
     public:
-
         // 默认的块总数
         static const size_t DEFAULT_ALLOC_BLOCK_SIZE = DefaultSize;
         // 默认的内存总量

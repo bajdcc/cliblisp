@@ -21,12 +21,16 @@ int main(int argc, char *argv[]) {
             clib::cparser p(input);
             auto root = p.parse();
             //clib::cast::print(root, 0, std::cout);
+            vm.save();
             auto val = vm.run(root);
-            vm.print(val, std::cout);
+            clib::cvm::print(val, std::cout);
+            std::cout << std::endl;
+            vm.gc();
         } catch (const std::exception &e) {
-            printf("RUNTIME ERROR: %s", e.what());
+            printf("RUNTIME ERROR: %s\n", e.what());
+            vm.restore();
+            vm.gc();
         }
-        std::cout << std::endl;
     }
     return 0;
 }

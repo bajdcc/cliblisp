@@ -46,16 +46,16 @@ namespace clib {
         std::make_tuple(op_minus, "-", "minus"),
         std::make_tuple(op_mul, "*", "mul"),
         std::make_tuple(op_div, "/", "div"),
-        std::make_tuple(op__end, "@END", "@END"),
+        std::make_tuple(op__end, "??? unknown op", "unknown op"),
     };
 
     const string_t &lexer_opstr(operator_t type) {
-        assert(type > op__start && type < op__end);
+        assert(type > op__start && type <= op__end);
         return std::get<1>(operator_string_list[type]);
     }
 
     const string_t &lexer_opnamestr(operator_t type) {
-        assert(type > op__start && type < op__end);
+        assert(type > op__start && type <= op__end);
         return std::get<2>(operator_string_list[type]);
     }
 

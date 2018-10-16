@@ -691,6 +691,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
     }
 
     void clexer::initMap() {
+        std::fill(sinOp.begin(), sinOp.end(), op__end);
         for (auto i = op__start + 1; i < op__end; i++) {
             const auto &op = OP_STRING((operator_t) i);
             if (op.length() == 1) {

@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 add_executable(cliblisp
         main.cpp
         memory.h
+        memory_gc.h
         types.h
         types.cpp
         clexer.h

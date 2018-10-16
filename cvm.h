@@ -10,6 +10,7 @@
 
 #include <vector>
 #include "cast.h"
+#include "memory_gc.h"
 
 namespace clib {
 
@@ -46,7 +47,12 @@ namespace clib {
         cvm &operator=(const cvm &) = delete;
 
         cval *run(ast_node *root);
-        void print(cval *val, std::ostream &os);
+        void gc();
+
+        static void print(cval *val, std::ostream &os);
+
+        void save();
+        void restore();
 
     private:
         void builtin();
@@ -57,11 +63,14 @@ namespace clib {
         cval *eval(cval *val);
         cval *val(ast_t type);
 
+        static int children_size(cval *val);
+
+        void set_free_callback();
+
         void error(const string_t &info);
 
     private:
-        // TODO: 后面做一个简单的GC，当异常时收回当前申请的内存
-        memory_pool<VM_MEM> mem;
+        memory_pool_gc<VM_MEM> mem;
     };
 }
 

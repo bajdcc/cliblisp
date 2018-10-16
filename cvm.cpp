@@ -15,6 +15,7 @@ namespace clib {
 
     cvm::cvm() {
         builtin();
+        set_free_callback();
     }
 
     void cvm::builtin() {
@@ -26,6 +27,12 @@ namespace clib {
         v->type = type;
         v->next = nullptr;
         return v;
+    }
+
+    int cvm::children_size(cval *val) {
+        if (!val || val->type != ast_sexpr)
+            return 0;
+        return val->val._v.count;
     }
 
     cval *cvm::run_rec(ast_node *node) {
@@ -40,14 +47,17 @@ namespace clib {
                     error("lambda: missing value");
                 if (node->child->flag == ast_literal) {
                     auto v = val(type);
+                    mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-                    printf("[DEBUG] Allocate val node: %s, count: %d\n", cast::ast_str(type).c_str(), cast::children_size(node));
+                    printf("[DEBUG] Allocate val node: %s, count: %d\n", cast::ast_str(type).c_str(),
+                           cast::children_size(node));
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
                     if (i->next == i) {
                         v->val._v.count = 1;
                         v->val._v.child = run_rec(i);
+                        mem.pop_root();
                         return eval(v);
                     }
                     auto local = run_rec(i);
@@ -60,6 +70,7 @@ namespace clib {
                         local = local->next;
                         i = i->next;
                     }
+                    mem.pop_root();
                     return eval(v);
                 } else
                     error("lambda: missing literal");
@@ -78,7 +89,7 @@ namespace clib {
                 auto v = val(type); \
                 v->val._##t = node->data._##t; \
                 printf("[DEBUG] Allocate val node: %s, val: ", cast::ast_str(type).c_str()); \
-                cast::print(node, 0, std::cout); \
+                print(v, std::cout); \
                 std::cout << std::endl; \
                 return v; }
 #else
@@ -105,6 +116,7 @@ namespace clib {
     }
 
     cval *cvm::run(ast_node *root) {
+        mem.save_stack();
         return run_rec(root);
     }
 
@@ -165,6 +177,13 @@ namespace clib {
                 os << val->val._double;
                 break;
         }
+    }
+
+    void cvm::gc() {
+        mem.gc();
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] Alive objects: %lu\n", mem.count());
+#endif
     }
 
     template<ast_t t>
@@ -232,6 +251,8 @@ namespace clib {
         std::memcpy(&r->val, &v->val, sizeof(v->val));
         v = v->next;
         while (v) {
+            if (r->type != v->type)
+                error("invalid operator type");
             calc(op, r->type, r, v);
             v = v->next;
         }
@@ -256,5 +277,31 @@ namespace clib {
                 return val;
         }
         return nullptr;
+    }
+
+    void cvm::set_free_callback() {
+#if SHOW_ALLOCATE_NODE
+        mem.set_callback([](void *ptr) {
+            cval *val = (cval *) ptr;
+            printf("[DEBUG] GC free: 0x%p, node: %s, ", ptr, cast::ast_str(val->type).c_str());
+            if (val->type == ast_sexpr) {
+                printf("count: %d\n", children_size(val));
+            } else if (val->type == ast_literal) {
+                printf("id: %s\n", val->val._string);
+            } else {
+                printf("val: ");
+                print(val, std::cout);
+                std::cout << std::endl;
+            }
+        });
+#endif
+    }
+
+    void cvm::save() {
+        mem.save_stack();
+    }
+
+    void cvm::restore() {
+        mem.restore_stack();
     }
 }
