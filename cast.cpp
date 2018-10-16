@@ -254,4 +254,25 @@ namespace clib {
         }
         return nullptr;
     }
+
+    std::tuple<ast_t, string_t> ast_list[] = {
+        std::make_tuple(ast_root, "root"),
+        std::make_tuple(ast_sexpr, "sexpr"),
+        std::make_tuple(ast_literal, "literal"),
+        std::make_tuple(ast_string, "string"),
+        std::make_tuple(ast_char, "char"),
+        std::make_tuple(ast_uchar, "uchar"),
+        std::make_tuple(ast_short, "short"),
+        std::make_tuple(ast_ushort, "ushort"),
+        std::make_tuple(ast_int, "int"),
+        std::make_tuple(ast_uint, "uint"),
+        std::make_tuple(ast_long, "long"),
+        std::make_tuple(ast_ulong, "ulong"),
+        std::make_tuple(ast_float, "float"),
+        std::make_tuple(ast_double, "double"),
+    };
+
+    const string_t &cast::ast_str(ast_t type) {
+        return std::get<1>(ast_list[type]);
+    }
 }

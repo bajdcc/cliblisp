@@ -10,9 +10,13 @@
 int main(int argc, char *argv[]) {
     clib::cvm vm;
     std::string input;
-    while (input != "exit") {
+    while (true) {
         std::cout << "lisp> ";
         std::getline(std::cin, input);
+        if (input == "exit")
+            break;
+        if (input.empty())
+            continue;
         try {
             clib::cparser p(input);
             auto root = p.parse();

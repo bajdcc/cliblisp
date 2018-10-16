@@ -91,6 +91,7 @@ namespace clib {
         void to(ast_to_t type);
 
         static void print(ast_node *node, int level, std::ostream &os);
+        static const string_t &ast_str(ast_t type);
 
         static ast_node *index(ast_node *node, int index);
         static ast_node *index(ast_node *node, const string_t &index);

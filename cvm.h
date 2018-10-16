@@ -55,6 +55,7 @@ namespace clib {
         void calc(char op, ast_t type, cval *r, cval *v);
         cval *calc_op(char op, cval *val);
         cval *eval(cval *val);
+        cval *val(ast_t type);
 
         void error(const string_t &info);
 

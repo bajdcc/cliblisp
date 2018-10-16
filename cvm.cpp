@@ -3,10 +3,13 @@
 // Created by bajdcc
 //
 
+#include <iostream>
 #include <iomanip>
 #include <cstring>
 #include "cvm.h"
 #include "cast.h"
+
+#define SHOW_ALLOCATE_NODE 1
 
 namespace clib {
 
@@ -16,6 +19,13 @@ namespace clib {
 
     void cvm::builtin() {
 
+    }
+
+    cval *cvm::val(ast_t type) {
+        auto v = mem.alloc<cval>();
+        v->type = type;
+        v->next = nullptr;
+        return v;
     }
 
     cval *cvm::run_rec(ast_node *node) {
@@ -29,10 +39,11 @@ namespace clib {
                 if (!node->child)
                     error("lambda: missing value");
                 if (node->child->flag == ast_literal) {
-                    auto v = mem.alloc<cval>();
-                    v->type = type;
+                    auto v = val(type);
+#if SHOW_ALLOCATE_NODE
+                    printf("[DEBUG] Allocate val node: %s, count: %d\n", cast::ast_str(type).c_str(), cast::children_size(node));
+#endif
                     v->val._v.child = nullptr;
-                    v->next = nullptr;
                     auto i = node->child;
                     if (i->next == i) {
                         v->val._v.count = 1;
@@ -54,17 +65,29 @@ namespace clib {
                     error("lambda: missing literal");
                 break;
             case ast_literal: {
-                auto v = mem.alloc<cval>();
-                v->type = type;
+                auto v = val(type);
                 v->val._string = node->data._string;
+#if SHOW_ALLOCATE_NODE
+                printf("[DEBUG] Allocate val node: %s, id: %s\n", cast::ast_str(type).c_str(), node->data._string);
+#endif
+                return v;
             }
-                break;
+#if SHOW_ALLOCATE_NODE
 #define DEFINE_VAL(t) \
-            case ast_##t: {\
-                auto v = mem.alloc<cval>(); \
-                v->type = type; \
+            case ast_##t: { \
+                auto v = val(type); \
+                v->val._##t = node->data._##t; \
+                printf("[DEBUG] Allocate val node: %s, val: ", cast::ast_str(type).c_str()); \
+                cast::print(node, 0, std::cout); \
+                std::cout << std::endl; \
+                return v; }
+#else
+#define DEFINE_VAL(t) \
+            case ast_##t: { \
+                auto v = val(type); \
                 v->val._##t = node->data._##t; \
                 return v; }
+#endif
             DEFINE_VAL(char)
             DEFINE_VAL(uchar)
             DEFINE_VAL(short)

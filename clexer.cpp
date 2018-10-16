@@ -245,7 +245,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
     }
 
     // 数字类型后缀（带无符号）
-    lexer_t clexer::digit_type(lexer_t t, int i) {
+    lexer_t clexer::digit_type(lexer_t t, uint &i) {
         if (i == length) {
             return l_error;
         }
@@ -253,11 +253,16 @@ LEX_T(t) clexer::get_store_##t(int index) const \
             if (++i == length) {
                 return unsigned_type(t);
             }
-            return unsigned_type(digit_type_postfix(str[i]));
+            if ((t = unsigned_type(digit_type_postfix(str[i]))) == l_error) {
+                return l_error;
+            }
+            ++i;
+            return t;
         } else {
             if ((t = digit_type_postfix(str[i])) == l_error) {
                 return l_error;
             }
+            ++i;
             return t;
         }
     }

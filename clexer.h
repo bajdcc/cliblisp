@@ -80,7 +80,7 @@ namespace clib {
 
         const err_record_t& recent_error() const;
 
-        lexer_t digit_type(lexer_t t, int i);
+        lexer_t digit_type(lexer_t t, uint &i);
         bool digit_from_integer(lexer_t t, LEX_T(ulong) n);
         bool digit_from_double(lexer_t t, LEX_T(double) n);
         lexer_t digit_return(lexer_t t, LEX_T(ulong) n, LEX_T(double) d, int i);
