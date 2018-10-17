@@ -120,6 +120,18 @@ namespace clib {
             if (lexer.is_operator(op_lparan)) {
                 return lambda();
             }
+            if (lexer.is_operator(op_quote)) {
+                match_operator(op_quote);
+                auto obj = object();
+                if (obj->flag == ast_sexpr) {
+                    obj->flag = ast_qexpr;
+                    return obj;
+                } else {
+                    auto node = ast.new_node(ast_qexpr);
+                    cast::set_child(node, obj);
+                    return node;
+                }
+            }
             auto node = ast.new_node(ast_literal);
             ast.set_str(node, OP_STRING(lexer.get_operator()));
             match_type(l_operator);

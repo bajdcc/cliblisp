@@ -16,6 +16,7 @@ namespace clib {
     enum ast_t {
         ast_root,
         ast_sexpr,
+        ast_qexpr,
         ast_literal,
         ast_string,
         ast_char,

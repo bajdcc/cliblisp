@@ -18,7 +18,7 @@
 - [x] 序列化
 - [x] 识别数字
 - [x] 识别S-表达式
-- [ ] 识别Q-表达式
+- [x] 识别Q-表达式
 - [x] GC
 - [x] 异常恢复
 - [x] 简单的内建四则运算
@@ -27,6 +27,10 @@
 - [ ] 识别变量
 - [ ] 识别函数
 - [ ] 添加更多功能
+
+内建函数：
+
+- eval
 
 ## 使用
 
@@ -81,77 +85,74 @@ lisp> + 9 8
 
 ```lisp
 lisp> 1
-[DEBUG] Allocate val node: int, val: 1
 1
-[DEBUG] GC free: 0x0054204C, node: int, val: 1
-[DEBUG] Alive objects: 0
 lisp> + 2 3
-[DEBUG] Allocate val node: sexpr, count: 3
-[DEBUG] Allocate val node: literal, id: +
-[DEBUG] Allocate val node: int, val: 2
-[DEBUG] Allocate val node: int, val: 3
 5
-[DEBUG] GC free: 0x0054204C, node: sexpr, count: 4
-[DEBUG] GC free: 0x0054207C, node: literal, id: +
-[DEBUG] GC free: 0x005420AC, node: int, val: 2
-[DEBUG] GC free: 0x005420DC, node: int, val: 3
-[DEBUG] GC free: 0x0054210C, node: int, val: 5
-[DEBUG] Alive objects: 0
 lisp> + 1 2 ( - 3 4 )
-[DEBUG] Allocate val node: sexpr, count: 4
-[DEBUG] Allocate val node: literal, id: +
-[DEBUG] Allocate val node: int, val: 1
-[DEBUG] Allocate val node: int, val: 2
-[DEBUG] Allocate val node: sexpr, count: 3
-[DEBUG] Allocate val node: literal, id: -
-[DEBUG] Allocate val node: int, val: 3
-[DEBUG] Allocate val node: int, val: 4
 2
-[DEBUG] GC free: 0x0054204C, node: sexpr, count: 8
-[DEBUG] GC free: 0x0054207C, node: literal, id: +
-[DEBUG] GC free: 0x005420AC, node: int, val: 1
-[DEBUG] GC free: 0x005420DC, node: int, val: 2
-[DEBUG] GC free: 0x0054210C, node: sexpr, count: 8
-[DEBUG] GC free: 0x0054213C, node: literal, id: -
-[DEBUG] GC free: 0x0054216C, node: int, val: 3
-[DEBUG] GC free: 0x0054219C, node: int, val: 4
-[DEBUG] GC free: 0x005421CC, node: int, val: -1
-[DEBUG] GC free: 0x005421FC, node: int, val: 2
-[DEBUG] Alive objects: 0
 lisp> + 1 2 ( - 3 d)
-[DEBUG] Allocate val node: sexpr, count: 4
-[DEBUG] Allocate val node: literal, id: +
-[DEBUG] Allocate val node: int, val: 1
-[DEBUG] Allocate val node: int, val: 2
-[DEBUG] Allocate val node: sexpr, count: 3
-[DEBUG] Allocate val node: literal, id: -
-[DEBUG] Allocate val node: int, val: 3
-[DEBUG] Allocate val node: literal, id: d
 COMPILER ERROR: invalid operator type
 RUNTIME ERROR: std::exception
-[DEBUG] GC free: 0x0054204C, node: sexpr, count: 12
-[DEBUG] GC free: 0x0054207C, node: literal, id: +
-[DEBUG] GC free: 0x005420AC, node: int, val: 1
-[DEBUG] GC free: 0x005420DC, node: int, val: 2
-[DEBUG] GC free: 0x0054210C, node: sexpr, count: 11
-[DEBUG] GC free: 0x0054213C, node: literal, id: -
-[DEBUG] GC free: 0x0054216C, node: int, val: 3
-[DEBUG] GC free: 0x0054219C, node: literal, id: d
-[DEBUG] GC free: 0x005421CC, node: int, val: 3
-[DEBUG] Alive objects: 0
 lisp> + "Hello" " " "world!"
-[DEBUG] Allocate val node: sexpr, count: 4
-[DEBUG] Allocate val node: literal, id: +
-[DEBUG] Allocate val node: string, id: Hello
-[DEBUG] Allocate val node: string, id:
-[DEBUG] Allocate val node: string, id: world!
 "Hello world!"
-[DEBUG] GC free: 0x0063C04C, node: sexpr, count: 4
-[DEBUG] GC free: 0x0063C07C, node: literal, id: +
-[DEBUG] GC free: 0x0063C0AC, node: string, val: "Hello"
-[DEBUG] GC free: 0x0063C0EC, node: string, val: " "
-[DEBUG] GC free: 0x0063C11C, node: string, val: "world!"
-[DEBUG] GC free: 0x0063C15C, node: string, val: "Hello world!"
+lisp> eval 5
+[DEBUG] Allocate val node: S-exp, count: 2
+[DEBUG] Allocate val node: literal, id: eval
+[DEBUG] Allocate val node: int, val: 5
+5
+[DEBUG] GC free: 0x01FC104C, node: S-exp, count: 2
+[DEBUG] GC free: 0x01FC107C, node: literal, id: eval
+[DEBUG] GC free: 0x01FC10BC, node: int, val: 5
+[DEBUG] Alive objects: 0
+lisp> eval `(+ 1 2)
+[DEBUG] Allocate val node: S-exp, count: 2
+[DEBUG] Allocate val node: literal, id: eval
+[DEBUG] Allocate val node: Q-exp, count: 3
+[DEBUG] Allocate val node: literal, id: +
+[DEBUG] Allocate val node: int, val: 1
+[DEBUG] Allocate val node: int, val: 2
+3
+[DEBUG] GC free: 0x01FC104C, node: S-exp, count: 2
+[DEBUG] GC free: 0x01FC107C, node: literal, id: eval
+[DEBUG] GC free: 0x01FC10BC, node: S-exp, count: 3
+[DEBUG] GC free: 0x01FC10EC, node: literal, id: +
+[DEBUG] GC free: 0x01FC111C, node: int, val: 1
+[DEBUG] GC free: 0x01FC114C, node: int, val: 2
+[DEBUG] GC free: 0x01FC117C, node: int, val: 3
+[DEBUG] Alive objects: 0
+lisp> eval (+ 1 2)
+[DEBUG] Allocate val node: S-exp, count: 2
+[DEBUG] Allocate val node: literal, id: eval
+[DEBUG] Allocate val node: S-exp, count: 3
+[DEBUG] Allocate val node: literal, id: +
+[DEBUG] Allocate val node: int, val: 1
+[DEBUG] Allocate val node: int, val: 2
+3
+[DEBUG] GC free: 0x01FC104C, node: S-exp, count: 2
+[DEBUG] GC free: 0x01FC107C, node: literal, id: eval
+[DEBUG] GC free: 0x01FC10BC, node: S-exp, count: 3
+[DEBUG] GC free: 0x01FC10EC, node: literal, id: +
+[DEBUG] GC free: 0x01FC111C, node: int, val: 1
+[DEBUG] GC free: 0x01FC114C, node: int, val: 2
+[DEBUG] GC free: 0x01FC117C, node: int, val: 3
+[DEBUG] Alive objects: 0
+lisp> `a
+[DEBUG] Allocate val node: Q-exp, count: 1
+[DEBUG] Allocate val node: literal, id: a
+`a
+[DEBUG] GC free: 0x01FC104C, node: Q-exp, count: 1
+[DEBUG] GC free: 0x01FC107C, node: literal, id: a
+[DEBUG] Alive objects: 0
+lisp> `(a b c)
+[DEBUG] Allocate val node: Q-exp, count: 3
+[DEBUG] Allocate val node: literal, id: a
+[DEBUG] Allocate val node: literal, id: b
+[DEBUG] Allocate val node: literal, id: c
+`(a b c)
+[DEBUG] GC free: 0x01FC104C, node: Q-exp, count: 3
+[DEBUG] GC free: 0x01FC107C, node: literal, id: a
+[DEBUG] GC free: 0x01FC10AC, node: literal, id: b
+[DEBUG] GC free: 0x01FC10DC, node: literal, id: c
 [DEBUG] Alive objects: 0
 ```
 
@@ -160,9 +161,12 @@ lisp> + "Hello" " " "world!"
 1. [x] ~~修改了Lexer识别数字的问题~~
 2. [x] ~~优化了内存池合并块算法，当没有元素被使用时将重置~~
 3. [x] ~~添加错误恢复功能，异常时恢复GC的存储栈大小~~
+4. [x] ~~更改了字符串管理方式，设为不可变~~
+5. [x] ~~GC申请内存后自动清零~~
 
 ## 参考
 
 1. [CMiniLang](https://github.com/bajdcc/CMiniLang)
 2. [lysp](http://piumarta.com/software/lysp/lysp-1.1/lysp.c)
 3. [MyScript](https://github.com/bajdcc/MyScript)
+4. [Build Your Own Lisp](http://buildyourownlisp.com)

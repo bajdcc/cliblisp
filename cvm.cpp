@@ -40,7 +40,7 @@ namespace clib {
     }
 
     uint cvm::children_size(cval *val) {
-        if (!val || val->type != ast_sexpr)
+        if (!val || (val->type != ast_sexpr && val->type != ast_qexpr))
             return 0;
         return val->val._v.count;
     }
@@ -54,7 +54,7 @@ namespace clib {
                 return run_rec(node->child);
             case ast_sexpr:
                 if (!node->child)
-                    error("lambda: missing value");
+                    error("S-exp: missing value");
                 if (node->child->flag == ast_literal) {
                     auto v = val_obj(type);
                     mem.push_root(v);
@@ -83,8 +83,39 @@ namespace clib {
                     mem.pop_root();
                     return eval(v);
                 } else
-                    error("lambda: missing literal");
+                    error("S-exp: missing literal");
                 break;
+            case ast_qexpr:
+                if (!node->child)
+                    error("Q-exp: missing value");
+                {
+                    auto v = val_obj(type);
+                    mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+                    printf("[DEBUG] Allocate val node: %s, count: %d\n", cast::ast_str(type).c_str(),
+                           cast::children_size(node));
+#endif
+                    v->val._v.child = nullptr;
+                    auto i = node->child;
+                    if (i->next == i) {
+                        v->val._v.count = 1;
+                        v->val._v.child = run_rec(i);
+                        mem.pop_root();
+                        return eval(v);
+                    }
+                    auto local = run_rec(i);
+                    v->val._v.child = local;
+                    v->val._v.count++;
+                    i = i->next;
+                    while (i != node->child) {
+                        v->val._v.count++;
+                        local->next = run_rec(i);
+                        local = local->next;
+                        i = i->next;
+                    }
+                    mem.pop_root();
+                    return v;
+                }
             case ast_string:
             case ast_literal: {
                 auto v = val_str(type, node->data._string);
@@ -127,7 +158,11 @@ namespace clib {
 
     cval *cvm::run(ast_node *root) {
         mem.save_stack();
-        return run_rec(root);
+        auto val = run_rec(root);
+        if (val->type == ast_literal) {
+            return eval(val);
+        }
+        return val;
     }
 
     void cvm::error(const string_t &info) {
@@ -142,6 +177,21 @@ namespace clib {
             case ast_root:
                 break;
             case ast_sexpr:
+                break;
+            case ast_qexpr: {
+                os << '`';
+                auto head = val->val._v.child;
+                if (val->val._v.count == 1) {
+                    print(head, os);
+                } else {
+                    os << '(';
+                    while (head) {
+                        print(head, os);
+                        head = head->next;
+                    }
+                    os << ')';
+                }
+            }
                 break;
             case ast_literal:
                 os << val->val._string;
@@ -186,6 +236,9 @@ namespace clib {
             case ast_double:
                 os << val->val._double;
                 break;
+        }
+        if (val->next) {
+            os << ' ';
         }
     }
 
@@ -282,6 +335,19 @@ namespace clib {
         return r;
     }
 
+    cval *cvm::calc_sub(const char *sub, cval *val) {
+        if (strstr(sub, "eval")) {
+            if (val->val._v.count > 2)
+                error("eval not support more than one args");
+            auto op = val->val._v.child->next;
+            if (op->type == ast_qexpr)
+                op->type = ast_sexpr;
+            return eval(op);
+        }
+        error("not support subroutine yet");
+        return nullptr;
+    }
+
     cval *cvm::eval(cval *val) {
         if (!val)
             return nullptr;
@@ -289,12 +355,22 @@ namespace clib {
             case ast_sexpr: {
                 if (val->val._v.child) {
                     auto op = val->val._v.child;
+                    if (val->val._v.count == 1)
+                        return eval(op);
+                    if (op->type != ast_literal)
+                        error("invalid operator type for S-exp");
                     auto opstr = op->val._string;
+                    if (isalpha(opstr[0])) {
+                        return calc_sub(opstr, val);
+                    }
                     return calc_op(opstr[0], op->next);
                 }
             }
                 break;
+            case ast_qexpr:
+                return val;
             case ast_literal:
+                error("not support variable yet");
                 break;
             default:
                 return val;
@@ -307,7 +383,7 @@ namespace clib {
         mem.set_callback([](void *ptr) {
             cval *val = (cval *) ptr;
             printf("[DEBUG] GC free: 0x%p, node: %s, ", ptr, cast::ast_str(val->type).c_str());
-            if (val->type == ast_sexpr) {
+            if (val->type == ast_sexpr || val->type == ast_qexpr) {
                 printf("count: %lu\n", children_size(val));
             } else if (val->type == ast_literal) {
                 printf("id: %s\n", val->val._string);

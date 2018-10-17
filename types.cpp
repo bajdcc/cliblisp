@@ -40,6 +40,7 @@ namespace clib {
         std::make_tuple(op_rsquare, "]", "rsquare"),
         std::make_tuple(op_lparan, "(", "lparan"),
         std::make_tuple(op_rparan, ")", "rparan"),
+        std::make_tuple(op_quote, "`", "quote"),
         std::make_tuple(op_comma, ",", "comma"),
         std::make_tuple(op_colon, ":", "colon"),
         std::make_tuple(op_plus, "+", "plus"),

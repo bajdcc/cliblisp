@@ -80,6 +80,7 @@ namespace clib {
         op_rsquare,
         op_lparan,
         op_rparan,
+        op_quote,
         op_comma,
         op_colon,
         op_plus,

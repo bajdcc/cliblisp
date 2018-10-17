@@ -170,6 +170,16 @@ namespace clib {
                 ast_recursion(node->child, level + 1, os, rec);
                 os << ')';
                 break;
+            case ast_qexpr:
+                os << '`';
+                if (node->child->child) {
+                    os << '(';
+                    ast_recursion(node->child, level + 1, os, rec);
+                    os << ')';
+                } else {
+                    rec(node->child, level + 1, os);
+                }
+                break;
             case ast_literal:
                 os << node->data._string;
                 break;
@@ -257,7 +267,8 @@ namespace clib {
 
     std::tuple<ast_t, string_t> ast_list[] = {
         std::make_tuple(ast_root, "root"),
-        std::make_tuple(ast_sexpr, "sexpr"),
+        std::make_tuple(ast_sexpr, "S-exp"),
+        std::make_tuple(ast_qexpr, "Q-exp"),
         std::make_tuple(ast_literal, "literal"),
         std::make_tuple(ast_string, "string"),
         std::make_tuple(ast_char, "char"),

@@ -68,6 +68,7 @@ namespace clib {
 
         void *alloc(size_t size) {
             auto new_node = static_cast<gc_header *>((void *) memory.template alloc_array<char>(GC_HEADER_SIZE + size));
+            memset(new_node, 0, GC_HEADER_SIZE + size);
             auto &top = stack_roots.back();
             if (top->child) {
                 new_node->prev = top->child->prev;
@@ -130,6 +131,7 @@ namespace clib {
         }
 
         void mark() {
+            stack_roots.front()->child = nullptr;
             for (auto it = stack_roots.begin() + 1; it != stack_roots.end(); it++) {
                 auto &root = *it;
                 set_marked(root, true);
