@@ -63,11 +63,11 @@ namespace clib {
 
         template<class T>
         T *alloc() {
-            struct gc_node {
-                gc_header header;
-                T t;
-            };
-            auto new_node = static_cast<gc_header *>((void *) memory.template alloc<gc_node>());
+            return static_cast<T *>(alloc(sizeof(T)));
+        }
+
+        void *alloc(size_t size) {
+            auto new_node = static_cast<gc_header *>((void *) memory.template alloc_array<char>(GC_HEADER_SIZE + size));
             auto &top = stack_roots.back();
             if (top->child) {
                 new_node->prev = top->child->prev;
@@ -79,7 +79,7 @@ namespace clib {
                 new_node->next = new_node->prev = new_node;
             }
             objects.push_back(new_node);
-            return static_cast<T *>((void *) (static_cast<char *>((void *) new_node) + GC_HEADER_SIZE));
+            return (void *) (static_cast<char *>((void *) new_node) + GC_HEADER_SIZE);
         }
 
         void push_root(void *ptr) {
@@ -130,7 +130,6 @@ namespace clib {
         }
 
         void mark() {
-            set_marked(stack_roots.front(), true);
             for (auto it = stack_roots.begin() + 1; it != stack_roots.end(); it++) {
                 auto &root = *it;
                 set_marked(root, true);

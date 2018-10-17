@@ -23,7 +23,7 @@
 - [x] 异常恢复
 - [x] 简单的内建四则运算
 - [ ] 常用内建函数/输入输出
-- [ ] 字符串处理
+- [x] 字符串处理
 - [ ] 识别变量
 - [ ] 识别函数
 - [ ] 添加更多功能
@@ -31,22 +31,33 @@
 ## 使用
 
 ```cpp
+int main(int argc, char *argv[]) {
     clib::cvm vm;
     std::string input;
-    while (input != "exit") {
+    while (true) {
         std::cout << "lisp> ";
         std::getline(std::cin, input);
+        if (input == "exit")
+            break;
+        if (input.empty())
+            continue;
         try {
+            vm.save();
             clib::cparser p(input);
             auto root = p.parse();
             //clib::cast::print(root, 0, std::cout);
             auto val = vm.run(root);
-            vm.print(val, std::cout);
+            clib::cvm::print(val, std::cout);
+            std::cout << std::endl;
+            vm.gc();
         } catch (const std::exception &e) {
-            printf("RUNTIME ERROR: %s", e.what());
+            printf("RUNTIME ERROR: %s\n", e.what());
+            vm.restore();
+            vm.gc();
         }
-        std::cout << std::endl;
     }
+    return 0;
+}
 ```
 
 ## 例子
@@ -127,6 +138,20 @@ RUNTIME ERROR: std::exception
 [DEBUG] GC free: 0x0054216C, node: int, val: 3
 [DEBUG] GC free: 0x0054219C, node: literal, id: d
 [DEBUG] GC free: 0x005421CC, node: int, val: 3
+[DEBUG] Alive objects: 0
+lisp> + "Hello" " " "world!"
+[DEBUG] Allocate val node: sexpr, count: 4
+[DEBUG] Allocate val node: literal, id: +
+[DEBUG] Allocate val node: string, id: Hello
+[DEBUG] Allocate val node: string, id:
+[DEBUG] Allocate val node: string, id: world!
+"Hello world!"
+[DEBUG] GC free: 0x0063C04C, node: sexpr, count: 4
+[DEBUG] GC free: 0x0063C07C, node: literal, id: +
+[DEBUG] GC free: 0x0063C0AC, node: string, val: "Hello"
+[DEBUG] GC free: 0x0063C0EC, node: string, val: " "
+[DEBUG] GC free: 0x0063C11C, node: string, val: "world!"
+[DEBUG] GC free: 0x0063C15C, node: string, val: "Hello world!"
 [DEBUG] Alive objects: 0
 ```
 

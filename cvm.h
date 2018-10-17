@@ -61,9 +61,10 @@ namespace clib {
         void calc(char op, ast_t type, cval *r, cval *v);
         cval *calc_op(char op, cval *val);
         cval *eval(cval *val);
-        cval *val(ast_t type);
+        cval *val_obj(ast_t type);
+        cval *val_str(ast_t type, const char *str);
 
-        static int children_size(cval *val);
+        static uint children_size(cval *val);
 
         void set_free_callback();
 

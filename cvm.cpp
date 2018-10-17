@@ -22,14 +22,24 @@ namespace clib {
 
     }
 
-    cval *cvm::val(ast_t type) {
+    cval *cvm::val_obj(ast_t type) {
         auto v = mem.alloc<cval>();
         v->type = type;
         v->next = nullptr;
         return v;
     }
 
-    int cvm::children_size(cval *val) {
+    cval *cvm::val_str(ast_t type, const char *str) {
+        auto len = strlen(str);
+        auto v = (cval *) mem.alloc(sizeof(cval) + len + 1);
+        v->type = type;
+        v->next = nullptr;
+        v->val._string = ((char *) v) + sizeof(cval);
+        strncpy((char *) v->val._string, str, len);
+        return v;
+    }
+
+    uint cvm::children_size(cval *val) {
         if (!val || val->type != ast_sexpr)
             return 0;
         return val->val._v.count;
@@ -46,7 +56,7 @@ namespace clib {
                 if (!node->child)
                     error("lambda: missing value");
                 if (node->child->flag == ast_literal) {
-                    auto v = val(type);
+                    auto v = val_obj(type);
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
                     printf("[DEBUG] Allocate val node: %s, count: %d\n", cast::ast_str(type).c_str(),
@@ -75,18 +85,18 @@ namespace clib {
                 } else
                     error("lambda: missing literal");
                 break;
+            case ast_string:
             case ast_literal: {
-                auto v = val(type);
-                v->val._string = node->data._string;
+                auto v = val_str(type, node->data._string);
 #if SHOW_ALLOCATE_NODE
-                printf("[DEBUG] Allocate val node: %s, id: %s\n", cast::ast_str(type).c_str(), node->data._string);
+                printf("[DEBUG] Allocate val node: %s, id: %s\n", cast::ast_str(type).c_str(), v->val._string);
 #endif
                 return v;
             }
 #if SHOW_ALLOCATE_NODE
 #define DEFINE_VAL(t) \
             case ast_##t: { \
-                auto v = val(type); \
+                auto v = val_obj(type); \
                 v->val._##t = node->data._##t; \
                 printf("[DEBUG] Allocate val node: %s, val: ", cast::ast_str(type).c_str()); \
                 print(v, std::cout); \
@@ -246,8 +256,21 @@ namespace clib {
         if (!val)
             error("missing operator");
         auto v = val;
-        auto r = mem.alloc<cval>();
-        r->type = v->type;
+        if (v->type == ast_string) {
+            if (op == '+') {
+                std::stringstream ss;
+                while (v) {
+                    if (v->type != ast_string)
+                        error("invalid operator type for string");
+                    ss << v->val._string;
+                    v = v->next;
+                }
+                return val_str(ast_string, ss.str().c_str());
+            } else {
+                error("invalid operator type for string");
+            }
+        }
+        auto r = val_obj(v->type);
         std::memcpy(&r->val, &v->val, sizeof(v->val));
         v = v->next;
         while (v) {
@@ -285,7 +308,7 @@ namespace clib {
             cval *val = (cval *) ptr;
             printf("[DEBUG] GC free: 0x%p, node: %s, ", ptr, cast::ast_str(val->type).c_str());
             if (val->type == ast_sexpr) {
-                printf("count: %d\n", children_size(val));
+                printf("count: %lu\n", children_size(val));
             } else if (val->type == ast_literal) {
                 printf("id: %s\n", val->val._string);
             } else {

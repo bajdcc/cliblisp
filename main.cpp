@@ -18,10 +18,10 @@ int main(int argc, char *argv[]) {
         if (input.empty())
             continue;
         try {
+            vm.save();
             clib::cparser p(input);
             auto root = p.parse();
             //clib::cast::print(root, 0, std::cout);
-            vm.save();
             auto val = vm.run(root);
             clib::cvm::print(val, std::cout);
             std::cout << std::endl;
