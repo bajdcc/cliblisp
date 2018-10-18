@@ -15,6 +15,8 @@
 namespace clib {
 
     struct cval {
+        using cenv_t = std::unordered_map<std::string, cval *>;
+        using csub_t = cval *(*)(cval *arg, cval *env);
         ast_t type;
         cval *next;
         union {
@@ -22,6 +24,14 @@ namespace clib {
                 uint count;
                 cval *child;
             } _v;
+            struct {
+                cval *parent;
+                cenv_t *env;
+            } _env;
+            struct {
+                void *vm;
+                csub_t sub;
+            } _sub;
             const char *_string;
 #define DEFINE_CVAL(t) LEX_T(t) _##t;
             DEFINE_CVAL(char)
@@ -37,6 +47,9 @@ namespace clib {
 #undef DEFINE_CVAL
         } val;
     };
+
+    using cenv = cval::cenv_t;
+    using csub = cval::csub_t;
 
     class cvm {
     public:
@@ -54,24 +67,30 @@ namespace clib {
         void save();
         void restore();
 
+        cval *calc_sub(const char *sub, cval *val, cval *env);
+        cval *eval(cval *val, cval *env);
+        void error(const string_t &info);
+
     private:
         void builtin();
-        cval *run_rec(ast_node *node);
+        void builtin_init();
+        cval *run_rec(ast_node *node, cval *env);
 
-        void calc(char op, ast_t type, cval *r, cval *v);
-        cval *calc_op(char op, cval *val);
-        cval *calc_sub(const char *sub, cval *val);
-        cval *eval(cval *val);
+        void calc(char op, ast_t type, cval *r, cval *v, cval *env);
+        cval *calc_op(char op, cval *val, cval *env);
+        cval *calc_symbol(const char *sym, cval *env);
         cval *val_obj(ast_t type);
         cval *val_str(ast_t type, const char *str);
+        cval *val_sub(csub sub);
+
+        cval *copy(cval *val);
 
         static uint children_size(cval *val);
 
         void set_free_callback();
 
-        void error(const string_t &info);
-
     private:
+        cval *global_env{nullptr};
         memory_pool_gc<VM_MEM> mem;
     };
 }

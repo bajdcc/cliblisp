@@ -165,6 +165,9 @@ namespace clib {
             case ast_root: // 根结点，全局声明
                 ast_recursion(node->child, level, os, rec);
                 break;
+            case ast_env:
+            case ast_sub:
+                break;
             case ast_sexpr:
                 os << '(';
                 ast_recursion(node->child, level + 1, os, rec);
@@ -267,6 +270,8 @@ namespace clib {
 
     std::tuple<ast_t, string_t> ast_list[] = {
         std::make_tuple(ast_root, "root"),
+        std::make_tuple(ast_env, "env"),
+        std::make_tuple(ast_env, "sub"),
         std::make_tuple(ast_sexpr, "S-exp"),
         std::make_tuple(ast_qexpr, "Q-exp"),
         std::make_tuple(ast_literal, "literal"),

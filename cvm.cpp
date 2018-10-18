@@ -19,7 +19,63 @@ namespace clib {
     }
 
     void cvm::builtin() {
+        global_env = val_obj(ast_env);
+        global_env->val._env.env = new cval::cenv_t();
+        global_env->val._env.parent = nullptr;
+        mem.push_root(global_env);
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] Allocate val node: %s, address: 0x%p\n", cast::ast_str(global_env->type).c_str(), global_env);
+#endif
+        builtin_init();
+        mem.pop_root();
+        mem.protect(global_env);
+    }
 
+    static void add_builtin(cenv &env, const char *name, cval *val) {
+        env.insert(std::make_pair(name, val));
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] Allocate val node: %s, name: %s, address: 0x%p\n", cast::ast_str(val->type).c_str(), name, val);
+#endif
+    }
+
+    static decltype(auto) add(cval *val, cval *env) {
+        auto _this = (cvm *)val->val._v.child->val._sub.vm;
+        return _this->calc_sub("+", val, env);
+    }
+
+    static decltype(auto) sub(cval *val, cval *env) {
+        auto _this = (cvm *)val->val._v.child->val._sub.vm;
+        return _this->calc_sub("-", val, env);
+    }
+
+    static decltype(auto) mul(cval *val, cval *env) {
+        auto _this = (cvm *)val->val._v.child->val._sub.vm;
+        return _this->calc_sub("*", val, env);
+    }
+
+    static decltype(auto) div(cval *val, cval *env) {
+        auto _this = (cvm *)val->val._v.child->val._sub.vm;
+        return _this->calc_sub("/", val, env);
+    }
+
+    static decltype(auto) _eval(cval *val, cval *env) {
+        auto _this = (cvm *)val->val._v.child->val._sub.vm;
+        if (val->val._v.count > 2)
+            _this->error("eval not support more than one args");
+        if (val->type == ast_qexpr)
+            val->type = ast_sexpr;
+        return _this->eval(val->val._v.child->next, env);
+    }
+
+    void cvm::builtin_init() {
+        auto &_env = *global_env->val._env.env;
+        add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
+        add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
+        add_builtin(_env, "+", val_sub(add));
+        add_builtin(_env, "-", val_sub(sub));
+        add_builtin(_env, "*", val_sub(mul));
+        add_builtin(_env, "/", val_sub(div));
+        add_builtin(_env, "eval", val_sub(_eval));
     }
 
     cval *cvm::val_obj(ast_t type) {
@@ -39,19 +95,26 @@ namespace clib {
         return v;
     }
 
+    cval *cvm::val_sub(csub sub) {
+        auto v = val_obj(ast_sub);
+        v->val._sub.vm = this;
+        v->val._sub.sub = sub;
+        return v;
+    }
+
     uint cvm::children_size(cval *val) {
         if (!val || (val->type != ast_sexpr && val->type != ast_qexpr))
             return 0;
         return val->val._v.count;
     }
 
-    cval *cvm::run_rec(ast_node *node) {
+    cval *cvm::run_rec(ast_node *node, cval *env) {
         if (node == nullptr)
             return nullptr;
         auto type = (ast_t) node->flag;
         switch (type) {
             case ast_root: // 根结点，全局声明
-                return run_rec(node->child);
+                return run_rec(node->child, env);
             case ast_sexpr:
                 if (!node->child)
                     error("S-exp: missing value");
@@ -59,29 +122,29 @@ namespace clib {
                     auto v = val_obj(type);
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-                    printf("[DEBUG] Allocate val node: %s, count: %d\n", cast::ast_str(type).c_str(),
-                           cast::children_size(node));
+                    printf("[DEBUG] Allocate val node: %s, count: %d, address: 0x%p\n", cast::ast_str(type).c_str(),
+                           cast::children_size(node), node);
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
                     if (i->next == i) {
                         v->val._v.count = 1;
-                        v->val._v.child = run_rec(i);
+                        v->val._v.child = run_rec(i, env);
                         mem.pop_root();
-                        return eval(v);
+                        return eval(v, env);
                     }
-                    auto local = run_rec(i);
+                    auto local = run_rec(i, env);
                     v->val._v.child = local;
                     v->val._v.count++;
                     i = i->next;
                     while (i != node->child) {
                         v->val._v.count++;
-                        local->next = run_rec(i);
+                        local->next = run_rec(i, env);
                         local = local->next;
                         i = i->next;
                     }
                     mem.pop_root();
-                    return eval(v);
+                    return eval(v, env);
                 } else
                     error("S-exp: missing literal");
                 break;
@@ -92,37 +155,45 @@ namespace clib {
                     auto v = val_obj(type);
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-                    printf("[DEBUG] Allocate val node: %s, count: %d\n", cast::ast_str(type).c_str(),
-                           cast::children_size(node));
+                    printf("[DEBUG] Allocate val node: %s, count: %d, address: 0x%p\n", cast::ast_str(type).c_str(),
+                           cast::children_size(node), node);
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
                     if (i->next == i) {
                         v->val._v.count = 1;
-                        v->val._v.child = run_rec(i);
+                        v->val._v.child = run_rec(i, env);
                         mem.pop_root();
-                        return eval(v);
+                        return eval(v, env);
                     }
-                    auto local = run_rec(i);
+                    auto local = run_rec(i, env);
                     v->val._v.child = local;
                     v->val._v.count++;
                     i = i->next;
                     while (i != node->child) {
                         v->val._v.count++;
-                        local->next = run_rec(i);
+                        local->next = run_rec(i, env);
                         local = local->next;
                         i = i->next;
                     }
                     mem.pop_root();
                     return v;
                 }
-            case ast_string:
+            case ast_string: {
+                auto v = val_str(type, node->data._string);
+#if SHOW_ALLOCATE_NODE
+                printf("[DEBUG] Allocate val node: %s, val: %s, address: 0x%p\n", cast::ast_str(type).c_str(),
+                    v->val._string, v);
+#endif
+                return v;
+            }
             case ast_literal: {
                 auto v = val_str(type, node->data._string);
 #if SHOW_ALLOCATE_NODE
-                printf("[DEBUG] Allocate val node: %s, id: %s\n", cast::ast_str(type).c_str(), v->val._string);
+                printf("[DEBUG] Allocate val node: %s, id: %s, address: 0x%p\n", cast::ast_str(type).c_str(),
+                    v->val._string, v);
 #endif
-                return v;
+                return eval(v, env);
             }
 #if SHOW_ALLOCATE_NODE
 #define DEFINE_VAL(t) \
@@ -131,12 +202,12 @@ namespace clib {
                 v->val._##t = node->data._##t; \
                 printf("[DEBUG] Allocate val node: %s, val: ", cast::ast_str(type).c_str()); \
                 print(v, std::cout); \
-                std::cout << std::endl; \
+                printf(", address: 0x%p\n", v); \
                 return v; }
 #else
 #define DEFINE_VAL(t) \
             case ast_##t: { \
-                auto v = val(type); \
+                auto v = val_obj(type); \
                 v->val._##t = node->data._##t; \
                 return v; }
 #endif
@@ -158,11 +229,8 @@ namespace clib {
 
     cval *cvm::run(ast_node *root) {
         mem.save_stack();
-        auto val = run_rec(root);
-        if (val->type == ast_literal) {
-            return eval(val);
-        }
-        return val;
+        auto val = run_rec(root, global_env);
+        return eval(val, global_env);
     }
 
     void cvm::error(const string_t &info) {
@@ -175,6 +243,10 @@ namespace clib {
             return;
         switch (val->type) {
             case ast_root:
+                break;
+            case ast_env:
+            case ast_sub:
+                os << "<subroutine>";
                 break;
             case ast_sexpr:
                 break;
@@ -277,7 +349,7 @@ namespace clib {
     DEFINE_VAL_OP(double)
 #undef DEFINE_VAL_OP
 
-    void cvm::calc(char op, ast_t type, cval *r, cval *v) {
+    void cvm::calc(char op, ast_t type, cval *r, cval *v, cval *env) {
         switch (type) {
 #define DEFINE_CALC_TYPE(t) \
             case ast_##t: \
@@ -305,7 +377,7 @@ namespace clib {
         error("unsupported calc op");
     }
 
-    cval *cvm::calc_op(char op, cval *val) {
+    cval *cvm::calc_op(char op, cval *val, cval *env) {
         if (!val)
             error("missing operator");
         auto v = val;
@@ -324,31 +396,95 @@ namespace clib {
             }
         }
         auto r = val_obj(v->type);
-        std::memcpy(&r->val, &v->val, sizeof(v->val));
+        std::memcpy((char *) &r->val, (char *) &v->val, sizeof(v->val));
         v = v->next;
         while (v) {
             if (r->type != v->type)
                 error("invalid operator type");
-            calc(op, r->type, r, v);
+            calc(op, r->type, r, v, env);
             v = v->next;
         }
         return r;
     }
 
-    cval *cvm::calc_sub(const char *sub, cval *val) {
-        if (strstr(sub, "eval")) {
-            if (val->val._v.count > 2)
-                error("eval not support more than one args");
-            auto op = val->val._v.child->next;
-            if (op->type == ast_qexpr)
-                op->type = ast_sexpr;
-            return eval(op);
+    cval *cvm::calc_sub(const char *sub, cval *val, cval *env) {
+        auto op = val->val._v.child->next;
+        if (!isalpha(sub[0])) {
+            return calc_op(sub[0], op, env);
         }
         error("not support subroutine yet");
         return nullptr;
     }
 
-    cval *cvm::eval(cval *val) {
+    cval *cvm::copy(cval *val) {
+        cval *new_val;
+        switch (val->type) {
+            case ast_root:
+            case ast_env:
+                error("not supported");
+                break;
+            case ast_sub:
+                new_val = val_sub(val->val._sub.sub);
+                new_val->val._sub.vm = val->val._sub.vm;
+                break;
+            case ast_sexpr:
+            case ast_qexpr:
+                new_val = val_obj(val->type);
+                new_val->val._v.count = val->val._v.count;
+                {
+                    mem.push_root(new_val);
+                    auto head = val->val._v.child;
+                    new_val->val._v.child = copy(head);
+                    if (val->val._v.count > 1) {
+                        auto _head = new_val->val._v.child;
+                        head = head->next;
+                        while (head) {
+                            _head->next = copy(head);
+                            head = head->next;
+                            _head = _head->next;
+                        }
+                    }
+                    mem.pop_root();
+                }
+                break;
+            case ast_literal:
+            case ast_string:
+                new_val = val_str(val->type, val->val._string);
+                break;
+            case ast_char:
+            case ast_uchar:
+            case ast_short:
+            case ast_ushort:
+            case ast_int:
+            case ast_uint:
+            case ast_long:
+            case ast_ulong:
+            case ast_float:
+            case ast_double:
+                new_val = val_obj(val->type);
+                std::memcpy((char *) &new_val->val, (char *) &val->val, sizeof(val->val));
+                break;
+        }
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] Copy node: %s, address: 0x%p\n", cast::ast_str(val->type).c_str(), new_val);
+#endif
+        return new_val;
+    }
+
+    cval *cvm::calc_symbol(const char *sym, cval *env) {
+        while (env) {
+            auto &_env = *env->val._env.env;
+            auto f = _env.find(sym);
+            if (f != _env.end()) {
+                return copy(f->second);
+            }
+            env = env->val._env.parent;
+        }
+        error("cannot find symbol");
+        return nullptr;
+    }
+
+    cval *cvm::eval(cval *val, cval *env) {
         if (!val)
             return nullptr;
         switch (val->type) {
@@ -356,26 +492,19 @@ namespace clib {
                 if (val->val._v.child) {
                     auto op = val->val._v.child;
                     if (val->val._v.count == 1)
-                        return eval(op);
-                    if (op->type != ast_literal)
+                        return eval(op, env);
+                    if (op->type != ast_sub)
                         error("invalid operator type for S-exp");
-                    auto opstr = op->val._string;
-                    if (isalpha(opstr[0])) {
-                        return calc_sub(opstr, val);
-                    }
-                    return calc_op(opstr[0], op->next);
+                    auto sub = op->val._sub.sub;
+                    return sub(val, env);
                 }
             }
                 break;
-            case ast_qexpr:
-                return val;
             case ast_literal:
-                error("not support variable yet");
-                break;
+                return calc_symbol(val->val._string, env);
             default:
                 return val;
         }
-        return nullptr;
     }
 
     void cvm::set_free_callback() {
@@ -387,10 +516,22 @@ namespace clib {
                 printf("count: %lu\n", children_size(val));
             } else if (val->type == ast_literal) {
                 printf("id: %s\n", val->val._string);
+            } else if (val->type == ast_env) {
+                printf("env: %d\n", val->val._env.env->size());
+                delete val->val._env.env;
+            } else if (val->type == ast_sub) {
+                printf("\n");
             } else {
                 printf("val: ");
                 print(val, std::cout);
                 std::cout << std::endl;
+            }
+        });
+#else
+        mem.set_callback([](void *ptr) {
+            cval *val = (cval *) ptr;
+            if (val->type == ast_env) {
+                delete val->val._env.env;
             }
         });
 #endif

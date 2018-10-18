@@ -77,11 +77,11 @@ namespace clib {
         // 内存管理接口
         Allocator allocator;
         // 块链表头指针
-        block *block_head;
+        block *block_head{nullptr};
         // 用于循环遍历的指针
-        block *block_current;
+        block *block_current{nullptr};
         // 空闲块数
-        size_t block_available_size;
+        size_t block_available_size{0};
 
         // ------------------------ //
 
@@ -235,6 +235,8 @@ namespace clib {
                     block_set_flag(blk, BLOCK_USING, 0);
                     break;
                 case 1:
+                    if (block_current == blk->next)
+                        block_current = blk;
                     block_available_size += block_merge(blk, blk->next, blk->size + 1);
                     block_set_flag(blk, BLOCK_USING, 0);
                     break;
@@ -242,9 +244,9 @@ namespace clib {
                     block_available_size += block_merge(blk->prev, blk, blk->size + 1);
                     break;
                 case 3:
+                    if (block_current == blk->next)
+                        block_current = blk->prev;
                     block_available_size += block_merge(blk->prev, blk, blk->next);
-                    if (blk->prev == blk->prev->next)
-                        _init();
                     break;
                 default:
                     break;
@@ -261,7 +263,7 @@ namespace clib {
 
         // 重新分配内存
         void *_realloc(void *p, uint newSize, uint clsSize) {
-            block *blk = static_cast<block *>(p);
+            auto blk = static_cast<block *>(p);
             --blk; // 自减得到块的元信息头
             if (!verify_address(blk))
                 return nullptr;

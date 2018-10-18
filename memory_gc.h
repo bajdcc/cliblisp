@@ -7,6 +7,7 @@
 #define CLIBLISP_MEMORY_GC_H
 
 #include <functional>
+#include <unordered_set>
 #include <cassert>
 #include <vector>
 #include "memory.h"
@@ -91,6 +92,14 @@ namespace clib {
             stack_roots.pop_back();
         }
 
+        void protect(void *ptr) {
+            roots.insert(header(ptr));
+        }
+
+        void unprotect(void *ptr) {
+            roots.erase(ptr);
+        }
+
         void gc() {
             mark();
             sweep();
@@ -118,6 +127,7 @@ namespace clib {
                 auto i = ptr->child;
                 if (i->next == i) {
                     set_marked(i, true);
+                    mark_children(i);
                     return;
                 }
                 auto local = i;
@@ -132,6 +142,10 @@ namespace clib {
 
         void mark() {
             stack_roots.front()->child = nullptr;
+            for (auto &root : roots) {
+                set_marked(root, true);
+                mark_children(root);
+            }
             for (auto it = stack_roots.begin() + 1; it != stack_roots.end(); it++) {
                 auto &root = *it;
                 set_marked(root, true);
@@ -147,7 +161,8 @@ namespace clib {
                     it++;
                 } else {
 #if SHOW_GC
-                    gc_callback((void *) data((void *) obj));
+                    if (gc_callback)
+                        gc_callback((void *) data((void *) obj));
 #endif
                     memory.free(obj);
                     it = objects.erase(it);
@@ -161,6 +176,7 @@ namespace clib {
         std::function<void(void *)> gc_callback{[](void *) {}};
         std::vector<gc_header *> objects;
         std::vector<gc_header *> stack_roots;
+        std::unordered_set<gc_header *> roots;
         memory_pool <DefaultSize> memory;
     };
 
