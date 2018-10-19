@@ -83,7 +83,8 @@ namespace clib {
         cval *calc_symbol(const char *sym, cval *env);
         cval *val_obj(ast_t type);
         cval *val_str(ast_t type, const char *str);
-        cval *val_sub(csub sub);
+        cval *val_sub(const char *name, csub sub);
+        cval *val_sub(cval *val);
 
         cval *copy(cval *val);
 

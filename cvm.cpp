@@ -43,11 +43,11 @@ namespace clib {
         auto &_env = *global_env->val._env.env;
         add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
         add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
-        add_builtin(_env, "+", val_sub(builtin_add));
-        add_builtin(_env, "-", val_sub(builtin_sub));
-        add_builtin(_env, "*", val_sub(builtin_mul));
-        add_builtin(_env, "/", val_sub(builtin_div));
-        add_builtin(_env, "eval", val_sub(builtin_eval));
+        add_builtin(_env, "+", val_sub("+", builtin_add));
+        add_builtin(_env, "-", val_sub("-", builtin_sub));
+        add_builtin(_env, "*", val_sub("*", builtin_mul));
+        add_builtin(_env, "/", val_sub("/", builtin_div));
+        add_builtin(_env, "eval", val_sub("eval", builtin_eval));
     }
 
     cval *cvm::val_obj(ast_t type) {
@@ -67,11 +67,27 @@ namespace clib {
         return v;
     }
 
-    cval *cvm::val_sub(csub sub) {
-        auto v = val_obj(ast_sub);
+    cval *cvm::val_sub(const char *name, csub sub) {
+        auto len = strlen(name);
+        auto v = (cval *) mem.alloc(sizeof(cval) + len + 1);
+        v->type = ast_sub;
+        v->next = nullptr;
+        auto str = ((char *) v) + sizeof(cval);
+        strncpy(str, name, len);
         v->val._sub.vm = this;
         v->val._sub.sub = sub;
         return v;
+    }
+
+    cval *cvm::val_sub(cval *val) {
+        auto name = ((char *) val) + sizeof(cval);
+        auto sub = val_sub(name, val->val._sub.sub);
+        sub->val._sub.vm = val->val._sub.vm;
+        return sub;
+    }
+
+    static char *sub_name(cval *val) {
+        return (char*)val + sizeof(cval);
     }
 
     uint cvm::children_size(cval *val) {
@@ -218,7 +234,7 @@ namespace clib {
                 break;
             case ast_env:
             case ast_sub:
-                os << "<subroutine>";
+                os << "<subroutine \"" << sub_name(val) << "\">";
                 break;
             case ast_sexpr:
                 break;
@@ -399,7 +415,7 @@ namespace clib {
                 error("not supported");
                 break;
             case ast_sub:
-                new_val = val_sub(val->val._sub.sub);
+                new_val = val_sub(val);
                 new_val->val._sub.vm = val->val._sub.vm;
                 break;
             case ast_sexpr:
@@ -495,7 +511,7 @@ namespace clib {
                 printf("env: %d\n", val->val._env.env->size());
                 delete val->val._env.env;
             } else if (val->type == ast_sub) {
-                printf("\n");
+                printf("name: %s\n", sub_name(val));
             } else {
                 printf("val: ");
                 print(val, std::cout);
