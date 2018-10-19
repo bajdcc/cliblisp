@@ -59,6 +59,8 @@ namespace clib {
         cvm(const cvm &) = delete;
         cvm &operator=(const cvm &) = delete;
 
+        friend class builtins;
+
         cval *run(ast_node *root);
         void gc();
 
@@ -67,8 +69,6 @@ namespace clib {
         void save();
         void restore();
 
-        cval *calc_sub(const char *sub, cval *val, cval *env);
-        cval *eval(cval *val, cval *env);
         void error(const string_t &info);
 
         void dump();
@@ -76,11 +76,14 @@ namespace clib {
     private:
         void builtin();
         void builtin_init();
-        cval *run_rec(ast_node *node, cval *env);
+        cval *run_rec(ast_node *node, cval *env, bool quote);
 
         void calc(char op, ast_t type, cval *r, cval *v, cval *env);
         cval *calc_op(char op, cval *val, cval *env);
         cval *calc_symbol(const char *sym, cval *env);
+        cval *calc_sub(const char *sub, cval *val, cval *env);
+        cval *eval(cval *val, cval *env);
+        cval *quote(cval *val, cval *env);
         cval *val_obj(ast_t type);
         cval *val_str(ast_t type, const char *str);
         cval *val_sub(const char *name, csub sub);

@@ -8,12 +8,18 @@
 
 namespace clib {
     struct cval;
+    class cvm;
 
-    cval *builtin_add(cval *val, cval *env);
-    cval *builtin_sub(cval *val, cval *env);
-    cval *builtin_mul(cval *val, cval *env);
-    cval *builtin_div(cval *val, cval *env);
-    cval *builtin_eval(cval *val, cval *env);
+    class builtins {
+    public:
+        static cval *add(cval *val, cval *env);
+        static cval *sub(cval *val, cval *env);
+        static cval *mul(cval *val, cval *env);
+        static cval *div(cval *val, cval *env);
+        static cval *eval(cval *val, cval *env);
+        static cval *quote(cval *val, cval *env);
+        static cval *list(cval *val, cval *env);
+    };
 }
 
 #endif //CLIBLISP_CSUB_H
