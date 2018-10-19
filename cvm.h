@@ -7,6 +7,7 @@
 #define CLIBLISP_CVM_H
 
 #define VM_MEM (32 * 1024)
+#define SHOW_ALLOCATE_NODE 0
 
 #include <vector>
 #include "cast.h"

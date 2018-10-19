@@ -15,6 +15,28 @@
 
 namespace clib {
 
+    static void add_builtin(cenv &env, const char *name, cval *val) {
+        env.insert(std::make_pair(name, val));
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] Allocate val node: %s, name: %s, address: 0x%p\n", cast::ast_str(val->type).c_str(), name, val);
+#endif
+    }
+
+    void cvm::builtin_init() {
+        auto &_env = *global_env->val._env.env;
+        add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
+        add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
+        add_builtin(_env, "+", val_sub("+", builtins::add));
+        add_builtin(_env, "-", val_sub("-", builtins::sub));
+        add_builtin(_env, "*", val_sub("*", builtins::mul));
+        add_builtin(_env, "/", val_sub("/", builtins::div));
+        add_builtin(_env, "eval", val_sub("eval", builtins::eval));
+        add_builtin(_env, "quote", val_sub("quote", builtins::quote));
+        add_builtin(_env, "list", val_sub("list", builtins::list));
+        add_builtin(_env, "car", val_sub("car", builtins::car));
+        add_builtin(_env, "cdr", val_sub("cdr", builtins::cdr));
+    }
+
     template<ast_t t>
     struct gen_op {
         void add(cval *r, cval *v) {}
@@ -176,5 +198,55 @@ namespace clib {
         }
         _this->mem.pop_root();
         return v;
+    }
+
+    cval *builtins::car(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count > 2)
+            _this->error("car not support more than one args");
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            _this->error("car need Q-exp");
+        if (op->val._v.child->type == ast_sexpr) {
+            return _this->copy(op->val._v.child->val._v.child);
+        } else {
+            return _this->copy(op->val._v.child);
+        }
+    }
+
+    cval *builtins::cdr(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count > 2)
+            _this->error("cdr not support more than one args");
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            _this->error("cdr need Q-exp");
+        if (op->val._v.count > 0) {
+            if (op->val._v.child->next) {
+                auto v = _this->val_obj(ast_qexpr);
+                _this->mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+                printf("[DEBUG] Allocate val node: %s, for cdr, address: 0x%p\n", cast::ast_str(v->type).c_str(), v);
+#endif
+                auto i = op->val._v.child->next;
+                auto local = _this->copy(i);
+                v->val._v.child = local;
+                v->val._v.count = 1;
+                i = i->next;
+                while (i) {
+                    v->val._v.count++;
+                    local->next = _this->copy(i);
+                    local = local->next;
+                    i = i->next;
+                }
+                _this->mem.pop_root();
+                return v;
+            } else {
+                _this->error("cdr returns null");
+            }
+        } else {
+            _this->error("cdr need more than one element");
+        }
+        return nullptr;
     }
 }

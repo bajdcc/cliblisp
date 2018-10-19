@@ -19,6 +19,8 @@ namespace clib {
         static cval *eval(cval *val, cval *env);
         static cval *quote(cval *val, cval *env);
         static cval *list(cval *val, cval *env);
+        static cval *car(cval *val, cval *env);
+        static cval *cdr(cval *val, cval *env);
     };
 }
 

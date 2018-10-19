@@ -12,7 +12,7 @@
 
 当前仅完成了四则运算，采用解释器求值。
 
-运行时所有对象采用标识回收GC。
+运行时所有对象采用标识回收GC，采用不可变值，传递拷贝。
 
 - [x] 词法分析
 - [x] 语法分析
@@ -38,6 +38,8 @@
 - eval
 - quote
 - list
+- car
+- cdr
 
 ## 调试信息
 
@@ -127,6 +129,17 @@ lisp> + "Project: " __project__ ", author: " __author__
 "Project: cliblisp, author: bajdcc"
 lisp> +
 <subroutine>
+```
+
+### List
+
+```lisp
+lisp> list
+<subroutine "list">
+lisp> car (list 1 2 3)
+1
+lisp> cdr (list 1 2 3)
+`(2 3)
 ```
 
 ## 改进

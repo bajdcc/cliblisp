@@ -10,8 +10,6 @@
 #include "cast.h"
 #include "csub.h"
 
-#define SHOW_ALLOCATE_NODE 1
-
 namespace clib {
 
     cvm::cvm() {
@@ -30,26 +28,6 @@ namespace clib {
         builtin_init();
         mem.pop_root();
         mem.protect(global_env);
-    }
-
-    static void add_builtin(cenv &env, const char *name, cval *val) {
-        env.insert(std::make_pair(name, val));
-#if SHOW_ALLOCATE_NODE
-        printf("[DEBUG] Allocate val node: %s, name: %s, address: 0x%p\n", cast::ast_str(val->type).c_str(), name, val);
-#endif
-    }
-
-    void cvm::builtin_init() {
-        auto &_env = *global_env->val._env.env;
-        add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
-        add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
-        add_builtin(_env, "+", val_sub("+", builtins::add));
-        add_builtin(_env, "-", val_sub("-", builtins::sub));
-        add_builtin(_env, "*", val_sub("*", builtins::mul));
-        add_builtin(_env, "/", val_sub("/", builtins::div));
-        add_builtin(_env, "eval", val_sub("eval", builtins::eval));
-        add_builtin(_env, "quote", val_sub("quote", builtins::quote));
-        add_builtin(_env, "list", val_sub("list", builtins::list));
     }
 
     cval *cvm::val_obj(ast_t type) {
@@ -429,6 +407,8 @@ namespace clib {
     }
 
     void cvm::dump() {
+#if SHOW_ALLOCATE_NODE
         mem.dump(std::cout);
+#endif
     }
 }
