@@ -71,6 +71,8 @@ namespace clib {
         cval *eval(cval *val, cval *env);
         void error(const string_t &info);
 
+        void dump();
+
     private:
         void builtin();
         void builtin_init();

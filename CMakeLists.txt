@@ -16,4 +16,6 @@ add_executable(cliblisp
         cast.h
         cast.cpp
         cvm.cpp
-        cvm.h)
+        cvm.h
+        csub.cpp
+        csub.h)

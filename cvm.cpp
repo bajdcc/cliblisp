@@ -8,6 +8,7 @@
 #include <cstring>
 #include "cvm.h"
 #include "cast.h"
+#include "csub.h"
 
 #define SHOW_ALLOCATE_NODE 1
 
@@ -38,44 +39,15 @@ namespace clib {
 #endif
     }
 
-    static decltype(auto) add(cval *val, cval *env) {
-        auto _this = (cvm *)val->val._v.child->val._sub.vm;
-        return _this->calc_sub("+", val, env);
-    }
-
-    static decltype(auto) sub(cval *val, cval *env) {
-        auto _this = (cvm *)val->val._v.child->val._sub.vm;
-        return _this->calc_sub("-", val, env);
-    }
-
-    static decltype(auto) mul(cval *val, cval *env) {
-        auto _this = (cvm *)val->val._v.child->val._sub.vm;
-        return _this->calc_sub("*", val, env);
-    }
-
-    static decltype(auto) div(cval *val, cval *env) {
-        auto _this = (cvm *)val->val._v.child->val._sub.vm;
-        return _this->calc_sub("/", val, env);
-    }
-
-    static decltype(auto) _eval(cval *val, cval *env) {
-        auto _this = (cvm *)val->val._v.child->val._sub.vm;
-        if (val->val._v.count > 2)
-            _this->error("eval not support more than one args");
-        if (val->type == ast_qexpr)
-            val->type = ast_sexpr;
-        return _this->eval(val->val._v.child->next, env);
-    }
-
     void cvm::builtin_init() {
         auto &_env = *global_env->val._env.env;
         add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
         add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
-        add_builtin(_env, "+", val_sub(add));
-        add_builtin(_env, "-", val_sub(sub));
-        add_builtin(_env, "*", val_sub(mul));
-        add_builtin(_env, "/", val_sub(div));
-        add_builtin(_env, "eval", val_sub(_eval));
+        add_builtin(_env, "+", val_sub(builtin_add));
+        add_builtin(_env, "-", val_sub(builtin_sub));
+        add_builtin(_env, "*", val_sub(builtin_mul));
+        add_builtin(_env, "/", val_sub(builtin_div));
+        add_builtin(_env, "eval", val_sub(builtin_eval));
     }
 
     cval *cvm::val_obj(ast_t type) {
@@ -123,7 +95,7 @@ namespace clib {
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
                     printf("[DEBUG] Allocate val node: %s, count: %d, address: 0x%p\n", cast::ast_str(type).c_str(),
-                           cast::children_size(node), node);
+                           cast::children_size(node), v);
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
@@ -381,6 +353,9 @@ namespace clib {
         if (!val)
             error("missing operator");
         auto v = val;
+        if (v->type == ast_sub) {
+            error("invalid operator type for sub");
+        }
         if (v->type == ast_string) {
             if (op == '+') {
                 std::stringstream ss;
@@ -417,7 +392,7 @@ namespace clib {
     }
 
     cval *cvm::copy(cval *val) {
-        cval *new_val;
+        cval *new_val{nullptr};
         switch (val->type) {
             case ast_root:
             case ast_env:
@@ -543,5 +518,9 @@ namespace clib {
 
     void cvm::restore() {
         mem.restore_stack();
+    }
+
+    void cvm::dump() {
+        mem.dump(std::cout);
     }
 }

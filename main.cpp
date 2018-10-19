@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
             vm.restore();
             vm.gc();
         }
+        vm.dump();
     }
     return 0;
 }

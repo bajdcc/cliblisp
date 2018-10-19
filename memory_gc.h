@@ -121,6 +121,10 @@ namespace clib {
             stack_roots.erase(stack_roots.begin() + saved_stack, stack_roots.end());
         }
 
+        void dump(std::ostream &os) {
+            memory.dump(os);
+        }
+
     private:
         void mark_children(gc_header *ptr) {
             if (ptr->child) {

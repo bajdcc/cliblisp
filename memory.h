@@ -6,6 +6,7 @@
 #ifndef CLIBLISP_MEMORY_H
 #define CLIBLISP_MEMORY_H
 
+#include <iostream>
 #include <cassert>
 #include <vector>
 #include "types.h"
@@ -109,21 +110,27 @@ namespace clib {
         }
 
         // 二块合并
-        static size_t block_merge(block *blk, block *next, size_t size) {
-            auto tmp = size;
-            next->next->prev = blk;
-            blk->size += tmp;
-            blk->next = next->next;
-            return tmp;
+        static size_t block_merge(block *blk, block *next, bool flag) {
+            if (flag) { // prev(USING) - blk(TO FREE) - next(FREE)
+                auto tmp = blk->size + 1;
+                next->next->prev = blk;
+                blk->size += next->size + 1;
+                blk->next = next->next;
+                return tmp;
+            } else { // blk(FREE) - next(TO FREE) - next(USING)
+                next->next->prev = blk;
+                blk->size += next->size + 1;
+                blk->next = next->next;
+                return next->size + 1;
+            }
         }
 
         // 三块合并
         static size_t block_merge(block *prev, block *blk, block *next) {
-            auto tmp = blk->size + 1;
             next->next->prev = prev;
-            prev->size += tmp + next->size + 1;
+            prev->size += blk->size + next->size + 2;
             prev->next = next->next;
-            return tmp;
+            return blk->size + 1;
         }
 
         // 块设置参数
@@ -237,11 +244,11 @@ namespace clib {
                 case 1:
                     if (block_current == blk->next)
                         block_current = blk;
-                    block_available_size += block_merge(blk, blk->next, blk->size + 1);
+                    block_available_size += block_merge(blk, blk->next, true);
                     block_set_flag(blk, BLOCK_USING, 0);
                     break;
                 case 2:
-                    block_available_size += block_merge(blk->prev, blk, blk->size + 1);
+                    block_available_size += block_merge(blk->prev, blk, false);
                     break;
                 case 3:
                     if (block_current == blk->next)
@@ -341,6 +348,30 @@ namespace clib {
 
         void clear() {
             _init();
+        }
+
+        void dump(std::ostream &os) {
+            auto ptr = block_head;
+            printf("[DEBUG] Memory pool | Available: %lu\n", block_available_size);
+            if (ptr->next == ptr) {
+                if (block_get_flag(ptr, BLOCK_USING)) {
+                    dump_block(ptr, os);
+                } else {
+                    os << "[DEBUG] Memory pool | All Free." << std::endl;
+                }
+            } else {
+                dump_block(ptr, os);
+                ptr = ptr->next;
+                while (ptr != block_head) {
+                    dump_block(ptr, os);
+                    ptr = ptr->next;
+                }
+            }
+        }
+
+    private:
+        static void dump_block(block *blk, std::ostream &os) {
+            printf("[DEBUG] Memory pool | [%p-%p] Size: %lu, State: %s\n", blk, blk + blk->size, blk->size, block_get_flag(blk, BLOCK_USING) ? "Using" : "Free");
         }
     };
 
