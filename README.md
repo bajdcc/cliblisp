@@ -49,6 +49,7 @@
 - cdr
 - def
 - if
+- len
 
 ## 调试信息
 
@@ -177,6 +178,10 @@ lisp> sum 100
 5050
 lisp> sum (- 0 5)
 0
+lisp> def `len (\ `l `(if (== l nil) `0 `(+ 1 (len (cdr l)))))
+nil
+lisp> len (list 1 2 3 )
+3
 ```
 
 ## 改进

@@ -47,6 +47,7 @@ namespace clib {
         ADD_BUILTIN(car);
         ADD_BUILTIN(cdr);
         ADD_BUILTIN(def);
+        ADD_BUILTIN(len);
 #undef ADD_BUILTIN
     }
 
@@ -182,6 +183,16 @@ namespace clib {
                     default:
                         break;
                 }
+            }
+            if (v->type == ast_qexpr) {
+                std::stringstream s1, s2;
+                v->next = nullptr;
+                v2->next = nullptr;
+                print(v, s1);
+                print(v2, s2);
+                auto a = s1.str();
+                auto b = s2.str();
+                return val_bool(a == b);
             }
             return val_bool(calc(op, v->type, v, v2, env) != 0);
         }
@@ -451,5 +462,15 @@ namespace clib {
             _f->type = ast_sexpr;
             return _this->eval(_f, env);
         }
+    }
+
+    cval *builtins::len(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            _this->error("len requires Q-exp");
+        auto v = _this->val_obj(ast_int);
+        v->val._int = (int) op->val._v.count;
+        return v;
     }
 }
