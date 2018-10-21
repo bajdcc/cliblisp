@@ -111,9 +111,12 @@ namespace clib {
                     error("S-exp: missing literal");
                 break;
             case ast_qexpr:
-                if (!node->child)
-                    error("Q-exp: missing value");
-                {
+                if (!node->child) {
+                    auto v = val_obj(type);
+                    v->val._v.count = 0;
+                    v->val._v.child = nullptr;
+                    return v;
+                } else  {
                     auto v = val_obj(type);
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
@@ -206,20 +209,23 @@ namespace clib {
                 break;
             case ast_sexpr:
                 break;
-            case ast_qexpr: {
-                os << '`';
-                auto head = val->val._v.child;
-                if (val->val._v.count == 1) {
-                    print(head, os);
+            case ast_qexpr:
+                if (val->val._v.count == 0) {
+                    os << "nil";
                 } else {
-                    os << '(';
-                    while (head) {
+                    os << '`';
+                    auto head = val->val._v.child;
+                    if (val->val._v.count == 1) {
                         print(head, os);
-                        head = head->next;
+                    } else {
+                        os << '(';
+                        while (head) {
+                            print(head, os);
+                            head = head->next;
+                        }
+                        os << ')';
                     }
-                    os << ')';
                 }
-            }
                 break;
             case ast_literal:
                 os << val->val._string;
@@ -292,7 +298,7 @@ namespace clib {
             case ast_qexpr:
                 new_val = val_obj(val->type);
                 new_val->val._v.count = val->val._v.count;
-                {
+                if (new_val->val._v.count > 0) {
                     mem.push_root(new_val);
                     auto head = val->val._v.child;
                     new_val->val._v.child = copy(head);
@@ -306,6 +312,8 @@ namespace clib {
                         }
                     }
                     mem.pop_root();
+                } else {
+                    new_val->val._v.child = nullptr;
                 }
                 break;
             case ast_literal:
@@ -358,6 +366,8 @@ namespace clib {
                         error("invalid operator type for S-exp");
                     auto sub = op->val._sub.sub;
                     return sub(val, env);
+                } else {
+                    return val_obj(ast_qexpr);
                 }
             }
                 break;

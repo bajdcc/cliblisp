@@ -12,6 +12,7 @@
 #define VM_OP(val) (val->val._v.child->next)
 
 #define VM_CALL(name) VM_THIS(val)->calc_sub(name, val, env)
+#define VM_NIL(this) this->val_obj(ast_qexpr)
 
 namespace clib {
 
@@ -26,6 +27,7 @@ namespace clib {
         auto &_env = *global_env->val._env.env;
         add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
         add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
+        add_builtin(_env, "nil", val_obj(ast_qexpr));
         add_builtin(_env, "+", val_sub("+", builtins::add));
         add_builtin(_env, "-", val_sub("-", builtins::sub));
         add_builtin(_env, "*", val_sub("*", builtins::mul));
@@ -207,6 +209,8 @@ namespace clib {
         auto op = VM_OP(val);
         if (op->type != ast_qexpr)
             _this->error("car need Q-exp");
+        if (!op->val._v.child)
+            return VM_NIL(_this);
         if (op->val._v.child->type == ast_sexpr) {
             return _this->copy(op->val._v.child->val._v.child);
         } else {
@@ -242,11 +246,10 @@ namespace clib {
                 _this->mem.pop_root();
                 return v;
             } else {
-                _this->error("cdr returns null");
+                return VM_NIL(_this);
             }
         } else {
-            _this->error("cdr need more than one element");
+            return VM_NIL(_this);
         }
-        return nullptr;
     }
 }
