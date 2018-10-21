@@ -112,7 +112,7 @@ namespace clib {
                         i = i->next;
                     }
                     mem.pop_root();
-                    return eval(v, env);
+                    return quote ? v : eval(v, env);
                 } else {
                     error("S-exp: missing literal");
                 }
@@ -387,6 +387,7 @@ namespace clib {
             }
             env = env->val._env.parent;
         }
+        printf("invalid symbol: %s\n", sym);
         error("cannot find symbol");
         return nullptr;
     }

@@ -39,6 +39,7 @@ namespace clib {
         add_builtin(_env, ">=", val_sub(">=", builtins::ge));
         add_builtin(_env, "==", val_sub("==", builtins::eq));
         add_builtin(_env, "!=", val_sub("!=", builtins::ne));
+        add_builtin(_env, "if", val_sub("if", builtins::_if));
 #define ADD_BUILTIN(name) add_builtin(_env, #name, val_sub(#name, builtins::name))
         ADD_BUILTIN(eval);
         ADD_BUILTIN(quote);
@@ -427,5 +428,28 @@ namespace clib {
 
     cval *builtins::ne(cval *val, cval *env) {
         return VM_CALL("!=");
+    }
+
+    cval *builtins::_if(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 4)
+            _this->error("if requires 3 args");
+        auto op = VM_OP(val);
+        auto flag = true;
+        if (op->type == ast_int && op->val._int == 0)
+            flag = false;
+        auto _t = op->next;
+        auto _f = _t->next;
+        if (_t->type != ast_qexpr)
+            _this->error("lambda need Q-exp for true branch");
+        if (_f->type != ast_qexpr)
+            _this->error("lambda need Q-exp for false branch");
+        if (flag) {
+            _t->type = ast_sexpr;
+            return _this->eval(_t, env);
+        } else {
+            _f->type = ast_sexpr;
+            return _this->eval(_f, env);
+        }
     }
 }
