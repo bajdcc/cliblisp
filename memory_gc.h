@@ -92,6 +92,12 @@ namespace clib {
             stack_roots.pop_back();
         }
 
+        void unlink(void *parent, void *ptr) {
+            auto _parent = header(parent);
+            auto _ptr = header(ptr);
+            unmark_children(_parent, _ptr);
+        }
+
         void protect(void *ptr) {
             roots.insert(header(ptr));
         }
@@ -129,17 +135,41 @@ namespace clib {
         void mark_children(gc_header *ptr) {
             if (ptr->child) {
                 auto i = ptr->child;
-                if (i->next == i) {
-                    set_marked(i, true);
-                    mark_children(i);
-                    return;
-                }
-                auto local = i;
                 set_marked(i, true);
                 i = i->next;
                 while (i != ptr->child) {
                     set_marked(i, true);
                     i = i->next;
+                }
+            }
+        }
+
+        void unmark_children(gc_header *parent, gc_header *ptr) {
+            if (parent->child) {
+                auto i = parent->child;
+                if (i->next == i) {
+                    parent->child = nullptr;
+                    return;
+                }
+                if (i == ptr) {
+                    parent->child = i->next;
+                    i->prev->next = parent->child;
+                } else {
+                    i = i->next;
+                }
+                while (i != parent->child) {
+                    if (i->next == ptr) {
+                        if (i->next->next == parent->child) {
+                            i->next = parent->child;
+                            parent->child->prev = i;
+                        } else {
+                            i->next->next->prev = i;
+                            i->next = i->next->next;
+                        }
+                        break;
+                    } else {
+                        i = i->next;
+                    }
                 }
             }
         }

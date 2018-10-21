@@ -32,11 +32,14 @@ namespace clib {
         add_builtin(_env, "-", val_sub("-", builtins::sub));
         add_builtin(_env, "*", val_sub("*", builtins::mul));
         add_builtin(_env, "/", val_sub("/", builtins::div));
-        add_builtin(_env, "eval", val_sub("eval", builtins::eval));
-        add_builtin(_env, "quote", val_sub("quote", builtins::quote));
-        add_builtin(_env, "list", val_sub("list", builtins::list));
-        add_builtin(_env, "car", val_sub("car", builtins::car));
-        add_builtin(_env, "cdr", val_sub("cdr", builtins::cdr));
+#define ADD_BUILTIN(name) add_builtin(_env, #name, val_sub(#name, builtins::name))
+        ADD_BUILTIN(eval);
+        ADD_BUILTIN(quote);
+        ADD_BUILTIN(list);
+        ADD_BUILTIN(car);
+        ADD_BUILTIN(cdr);
+        ADD_BUILTIN(def);
+#undef ADD_BUILTIN
     }
 
     template<ast_t t>
@@ -250,6 +253,43 @@ namespace clib {
             }
         } else {
             return VM_NIL(_this);
+        }
+    }
+
+    cval *builtins::def(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count <= 2)
+            _this->error("def not support less than 2 args");
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            _this->error("def need Q-exp for first argument");
+        if (op->val._v.count == val->val._v.count - 2) {
+            auto param = op->val._v.child;
+            auto argument = op->next;
+            for (auto i = 0; i < op->val._v.count; ++i) {
+                if (param->type != ast_literal) {
+                    _this->error("def need literal for Q-exp");
+                }
+                param = param->next;
+            }
+            param = op->val._v.child;
+            _this->mem.push_root(env);
+            for (auto i = 0; i < op->val._v.count; ++i) {
+                auto &_env = *env->val._env.env;
+                auto name = param->val._string;
+                auto old = _env.find(name);
+                if (old != _env.end()) {
+                    _this->mem.unlink(env, old->second);
+                }
+                _env[param->val._string] = _this->copy(argument);
+                param = param->next;
+                argument = argument->next;
+            }
+            _this->mem.pop_root();
+            return VM_NIL(_this);
+        } else {
+            _this->error("def need same size of Q-exp and argument");
+            return nullptr;
         }
     }
 }

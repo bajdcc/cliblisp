@@ -29,7 +29,7 @@
 - [x] nil
 - [ ] 常用内建函数/输入输出
 - [x] 字符串处理
-- [x] 识别变量
+- [x] 识别变量，设置变量
 - [ ] 识别函数
 - [ ] 添加更多功能
 
@@ -41,6 +41,7 @@
 - list
 - car
 - cdr
+- def
 
 ## 调试信息
 
@@ -93,22 +94,6 @@ lisp> + a 5
 + a 5
 COMPILER ERROR: unsupported calc op
 RUNTIME ERROR: std::exception
-lisp> + 9 8
-17
-```
-
-### GC
-
-```lisp
-lisp> 1
-1
-lisp> + 2 3
-5
-lisp> + 1 2 ( - 3 4 )
-2
-lisp> + 1 2 ( - 3 d)
-COMPILER ERROR: invalid operator type
-RUNTIME ERROR: std::exception
 lisp> + "Hello" " " "world!"
 "Hello world!"
 lisp> eval 5
@@ -143,6 +128,15 @@ lisp> cdr (list 1 2 3)
 `(2 3)
 lisp> (eval (car (list + - * /))) 1 1
 2
+```
+
+### Builtin
+
+```lisp
+lisp> def `(a b c d) 1 2 3 4
+nil
+lisp> + a b c d
+10
 ```
 
 ## 改进
