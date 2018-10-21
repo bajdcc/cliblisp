@@ -33,6 +33,12 @@ namespace clib {
         add_builtin(_env, "*", val_sub("*", builtins::mul));
         add_builtin(_env, "/", val_sub("/", builtins::div));
         add_builtin(_env, "\\", val_sub("\\", builtins::lambda));
+        add_builtin(_env, "<", val_sub("<", builtins::lt));
+        add_builtin(_env, "<=", val_sub("<=", builtins::le));
+        add_builtin(_env, ">", val_sub(">", builtins::gt));
+        add_builtin(_env, ">=", val_sub(">=", builtins::ge));
+        add_builtin(_env, "==", val_sub("==", builtins::eq));
+        add_builtin(_env, "!=", val_sub("!=", builtins::ne));
 #define ADD_BUILTIN(name) add_builtin(_env, #name, val_sub(#name, builtins::name))
         ADD_BUILTIN(eval);
         ADD_BUILTIN(quote);
@@ -49,6 +55,12 @@ namespace clib {
         void sub(cval *r, cval *v) {}
         void mul(cval *r, cval *v) {}
         void div(cval *r, cval *v) {}
+        bool eq(cval *r, cval *v) {}
+        bool ne(cval *r, cval *v) {}
+        bool le(cval *r, cval *v) {}
+        bool ge(cval *r, cval *v) {}
+        bool lt(cval *r, cval *v) {}
+        bool gt(cval *r, cval *v) {}
     };
 
 #define DEFINE_VAL_OP(t) \
@@ -58,6 +70,12 @@ namespace clib {
         static void sub(cval *r, cval *v) { r->val._##t -= v->val._##t; } \
         static void mul(cval *r, cval *v) { r->val._##t *= v->val._##t; } \
         static void div(cval *r, cval *v) { r->val._##t /= v->val._##t; } \
+        static bool eq(cval *r, cval *v) { return r->val._##t == v->val._##t; } \
+        static bool ne(cval *r, cval *v) { return r->val._##t != v->val._##t; } \
+        static bool le(cval *r, cval *v) { return r->val._##t <= v->val._##t; } \
+        static bool ge(cval *r, cval *v) { return r->val._##t >= v->val._##t; } \
+        static bool lt(cval *r, cval *v) { return r->val._##t < v->val._##t; } \
+        static bool gt(cval *r, cval *v) { return r->val._##t > v->val._##t; } \
     };
     DEFINE_VAL_OP(char)
     DEFINE_VAL_OP(uchar)
@@ -71,16 +89,22 @@ namespace clib {
     DEFINE_VAL_OP(double)
 #undef DEFINE_VAL_OP
 
-    void cvm::calc(char op, ast_t type, cval *r, cval *v, cval *env) {
+    int cvm::calc(int op, ast_t type, cval *r, cval *v, cval *env) {
         switch (type) {
 #define DEFINE_CALC_TYPE(t) \
             case ast_##t: \
                 switch (op) { \
-                    case '+': return gen_op<ast_##t>::add(r, v); \
-                    case '-': return gen_op<ast_##t>::sub(r, v); \
-                    case '*': return gen_op<ast_##t>::mul(r, v); \
-                    case '/': return gen_op<ast_##t>::div(r, v); \
-                } \
+                    case '+': gen_op<ast_##t>::add(r, v); return 0; \
+                    case '-': gen_op<ast_##t>::sub(r, v); return 0; \
+                    case '*': gen_op<ast_##t>::mul(r, v); return 0; \
+                    case '/': gen_op<ast_##t>::div(r, v); return 0; \
+                    case '=' | '=' << 8: return gen_op<ast_##t>::eq(r, v); \
+                    case '!' | '=' << 8: return gen_op<ast_##t>::ne(r, v); \
+                    case '<' | '=' << 8: return gen_op<ast_##t>::le(r, v); \
+                    case '>' | '=' << 8: return gen_op<ast_##t>::ge(r, v); \
+                    case '<': return gen_op<ast_##t>::lt(r, v); \
+                    case '>': return gen_op<ast_##t>::gt(r, v); \
+        } \
                 break;
             DEFINE_CALC_TYPE(char)
             DEFINE_CALC_TYPE(uchar)
@@ -97,9 +121,24 @@ namespace clib {
                 break;
         }
         error("unsupported calc op");
+        return 0;
     }
 
-    cval *cvm::calc_op(char op, cval *val, cval *env) {
+    static bool is_comparison(int op) {
+        switch (op) {
+            case '=' | '=' << 8:
+            case '!' | '=' << 8:
+            case '<' | '=' << 8:
+            case '>' | '=' << 8:
+            case '<':
+            case '>':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    cval *cvm::calc_op(int op, cval *val, cval *env) {
         if (!val)
             error("missing operator");
         auto v = val;
@@ -116,9 +155,34 @@ namespace clib {
                     v = v->next;
                 }
                 return val_str(ast_string, ss.str().c_str());
-            } else {
-                error("invalid operator type for string");
             }
+            error("invalid operator type for string");
+        }
+        if (is_comparison(op)) {
+            if (!v->next || v->next->next)
+                error("comparison requires 2 arguments");
+            auto v2 = v->next;
+            if (v->type != v2->type)
+                error("invalid operator type for comparison");
+            if (v->type == ast_string) {
+                switch (op) {
+                    case '=' | '=' << 8:
+                        return val_bool(strcmp(v->val._string, v2->val._string) == 0);
+                    case '!' | '=' << 8:
+                        return val_bool(strcmp(v->val._string, v2->val._string) != 0);
+                    case '<' | '=' << 8:
+                        return val_bool(strcmp(v->val._string, v2->val._string) <= 0);
+                    case '>' | '=' << 8:
+                        return val_bool(strcmp(v->val._string, v2->val._string) >= 0);
+                    case '<':
+                        return val_bool(strcmp(v->val._string, v2->val._string) < 0);
+                    case '>':
+                        return val_bool(strcmp(v->val._string, v2->val._string) > 0);
+                    default:
+                        break;
+                }
+            }
+            return val_bool(calc(op, v->type, v, v2, env) != 0);
         }
         auto r = val_obj(v->type);
         std::memcpy((char *) &r->val, (char *) &v->val, sizeof(v->val));
@@ -135,7 +199,8 @@ namespace clib {
     cval *cvm::calc_sub(const char *sub, cval *val, cval *env) {
         auto op = val->val._v.child->next;
         if (!isalpha(sub[0])) {
-            return calc_op(sub[0], op, env);
+            if (strlen(sub) <= 2)
+                return calc_op(sub[0] | sub[1] << 8, op, env);
         }
         error("not support subroutine yet");
         return nullptr;
@@ -338,5 +403,29 @@ namespace clib {
         auto ret = _this->eval(body, new_env);
         _this->mem.pop_root();
         return ret;
+    }
+
+    cval *builtins::lt(cval *val, cval *env) {
+        return VM_CALL("<");
+    }
+
+    cval *builtins::le(cval *val, cval *env) {
+        return VM_CALL("<=");
+    }
+
+    cval *builtins::gt(cval *val, cval *env) {
+        return VM_CALL(">");
+    }
+
+    cval *builtins::ge(cval *val, cval *env) {
+        return VM_CALL(">=");
+    }
+
+    cval *builtins::eq(cval *val, cval *env) {
+        return VM_CALL("==");
+    }
+
+    cval *builtins::ne(cval *val, cval *env) {
+        return VM_CALL("!=");
     }
 }

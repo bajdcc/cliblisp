@@ -83,10 +83,6 @@ namespace clib {
         op_quote,
         op_comma,
         op_colon,
-        op_plus,
-        op_minus,
-        op_mul,
-        op_div,
         op_lambda,
         op__end,
     };

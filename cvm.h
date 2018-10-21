@@ -83,8 +83,8 @@ namespace clib {
         void builtin_init();
         cval *run_rec(ast_node *node, cval *env, bool quote);
 
-        void calc(char op, ast_t type, cval *r, cval *v, cval *env);
-        cval *calc_op(char op, cval *val, cval *env);
+        int calc(int op, ast_t type, cval *r, cval *v, cval *env);
+        cval *calc_op(int op, cval *val, cval *env);
         cval *calc_symbol(const char *sym, cval *env);
         cval *calc_sub(const char *sub, cval *val, cval *env);
         cval *calc_lambda(cval *param, cval *body, cval *val, cval *env);
@@ -93,6 +93,7 @@ namespace clib {
         cval *val_str(ast_t type, const char *str);
         cval *val_sub(const char *name, csub sub);
         cval *val_sub(cval *val);
+        cval *val_bool(bool flag);
 
         cval *copy(cval *val);
         cval *new_env(cval *env);

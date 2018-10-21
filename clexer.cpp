@@ -673,6 +673,14 @@ LEX_T(t) clexer::get_store_##t(int index) const \
         if (p == 0) {
             return record_error(e_invalid_operator, 1);
         }
+        if (p == op__end) {
+            sint i;
+            for (i = index + 1; i < length && !(isalnum(str[i]) || isspace(str[i])); i++);
+            auto s = str.substr(index, i - index);
+            bags._identifier = s;
+            move(s.length());
+            return l_identifier;
+        }
         bags._operator = (operator_t) p;
         move(1);
         return l_operator;

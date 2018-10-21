@@ -66,6 +66,12 @@ namespace clib {
         return sub;
     }
 
+    cval *cvm::val_bool(bool flag) {
+        auto v = val_obj(ast_int);
+        v->val._int = flag ? 1 : 0;
+        return v;
+    }
+
     static char *sub_name(cval *val) {
         return (char*)val + sizeof(cval);
     }

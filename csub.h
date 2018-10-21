@@ -25,6 +25,13 @@ namespace clib {
         static cval *def(cval *val, cval *env);
         static cval *lambda(cval *val, cval *env);
         static cval *call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env);
+
+        static cval *lt(cval *val, cval *env);
+        static cval *le(cval *val, cval *env);
+        static cval *gt(cval *val, cval *env);
+        static cval *ge(cval *val, cval *env);
+        static cval *eq(cval *val, cval *env);
+        static cval *ne(cval *val, cval *env);
     };
 }
 

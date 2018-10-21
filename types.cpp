@@ -43,10 +43,6 @@ namespace clib {
         std::make_tuple(op_quote, "`", "quote"),
         std::make_tuple(op_comma, ",", "comma"),
         std::make_tuple(op_colon, ":", "colon"),
-        std::make_tuple(op_plus, "+", "plus"),
-        std::make_tuple(op_minus, "-", "minus"),
-        std::make_tuple(op_mul, "*", "mul"),
-        std::make_tuple(op_div, "/", "div"),
         std::make_tuple(op_lambda, "\\", "lambda"),
         std::make_tuple(op__end, "??? unknown op", "unknown op"),
     };
