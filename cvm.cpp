@@ -185,6 +185,8 @@ namespace clib {
             default:
                 break;
         }
+        error("invalid val type");
+        return nullptr;
     }
 
     cval *cvm::run(ast_node *root) {
@@ -205,6 +207,16 @@ namespace clib {
             case ast_root:
                 break;
             case ast_env:
+                break;
+            case ast_lambda:
+                os << "<lambda ";
+                print(val->val._lambda.param, os);
+                os << ' ';
+                val->val._lambda.body->type = ast_qexpr;
+                print(val->val._lambda.body, os);
+                val->val._lambda.body->type = ast_sexpr;
+                os << ">";
+                break;
             case ast_sub:
                 os << "<subroutine \"" << sub_name(val) << "\">";
                 break;
@@ -299,6 +311,15 @@ namespace clib {
             case ast_env:
                 error("not supported");
                 break;
+            case ast_lambda:
+                new_val = val_obj(val->type);
+                {
+                    mem.push_root(new_val);
+                    new_val->val._lambda.param = copy(val->val._lambda.param);
+                    new_val->val._lambda.body = copy(val->val._lambda.body);
+                    mem.pop_root();
+                }
+                break;
             case ast_sub:
                 new_val = val_sub(val);
                 new_val->val._sub.vm = val->val._sub.vm;
@@ -364,6 +385,10 @@ namespace clib {
         return nullptr;
     }
 
+    cval *cvm::calc_lambda(cval *param, cval *body, cval *val, cval *env) {
+        return builtins::call_lambda(this, param, body, val, env);
+    }
+
     cval *cvm::eval(cval *val, cval *env) {
         if (!val)
             return nullptr;
@@ -373,10 +398,43 @@ namespace clib {
                     auto op = val->val._v.child;
                     if (val->val._v.count == 1)
                         return eval(op, env);
-                    if (op->type != ast_sub)
-                        error("invalid operator type for S-exp");
-                    auto sub = op->val._sub.sub;
-                    return sub(val, env);
+                    switch (op->type) {
+                        case ast_sub: {
+                            auto sub = op->val._sub.sub;
+                            return sub(val, env);
+                        }
+                        case ast_lambda: {
+                            auto param = op->val._lambda.param;
+                            auto body = op->val._lambda.body;
+                            return calc_lambda(param, body, val, env);
+                        }
+                        case ast_literal: {
+                            auto v = val_obj(val->type);
+                            mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+                            printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, count: %lu\n", v, cast::ast_str(val->type).c_str(),
+                                   children_size(val));
+#endif
+                            v->val._v.child = nullptr;
+                            auto i = op;
+                            auto local = eval(i, env);
+                            v->val._v.child = local;
+                            v->val._v.count++;
+                            i = i->next;
+                            while (i) {
+                                v->val._v.count++;
+                                local->next = eval(i, env);
+                                local = local->next;
+                                i = i->next;
+                            }
+                            mem.pop_root();
+                            return eval(v, env);
+                        }
+                        default:
+                            break;
+                    }
+                    error("invalid operator type for S-exp");
+                    return nullptr;
                 } else {
                     return val_obj(ast_qexpr);
                 }
@@ -386,6 +444,13 @@ namespace clib {
             default:
                 return val;
         }
+    }
+
+    cval *cvm::new_env(cval *env) {
+        auto _env = val_obj(ast_env);
+        _env->val._env.env = new cval::cenv_t();
+        _env->val._env.parent = env;
+        return _env;
     }
 
     void cvm::set_free_callback() {

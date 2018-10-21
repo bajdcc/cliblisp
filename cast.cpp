@@ -167,6 +167,7 @@ namespace clib {
                 break;
             case ast_env:
             case ast_sub:
+            case ast_lambda:
                 break;
             case ast_sexpr:
                 os << '(';
@@ -271,7 +272,8 @@ namespace clib {
     std::tuple<ast_t, string_t> ast_list[] = {
         std::make_tuple(ast_root, "root"),
         std::make_tuple(ast_env, "env"),
-        std::make_tuple(ast_env, "sub"),
+        std::make_tuple(ast_sub, "sub"),
+        std::make_tuple(ast_lambda, "lambda"),
         std::make_tuple(ast_sexpr, "S-exp"),
         std::make_tuple(ast_qexpr, "Q-exp"),
         std::make_tuple(ast_literal, "literal"),

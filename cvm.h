@@ -33,6 +33,10 @@ namespace clib {
                 void *vm;
                 csub_t sub;
             } _sub;
+            struct {
+                cval *param;
+                cval *body;
+            } _lambda;
             const char *_string;
 #define DEFINE_CVAL(t) LEX_T(t) _##t;
             DEFINE_CVAL(char)
@@ -83,14 +87,15 @@ namespace clib {
         cval *calc_op(char op, cval *val, cval *env);
         cval *calc_symbol(const char *sym, cval *env);
         cval *calc_sub(const char *sub, cval *val, cval *env);
+        cval *calc_lambda(cval *param, cval *body, cval *val, cval *env);
         cval *eval(cval *val, cval *env);
-        cval *quote(cval *val, cval *env);
         cval *val_obj(ast_t type);
         cval *val_str(ast_t type, const char *str);
         cval *val_sub(const char *name, csub sub);
         cval *val_sub(cval *val);
 
         cval *copy(cval *val);
+        cval *new_env(cval *env);
 
         static uint children_size(cval *val);
 

@@ -87,6 +87,7 @@ namespace clib {
         op_minus,
         op_mul,
         op_div,
+        op_lambda,
         op__end,
     };
 

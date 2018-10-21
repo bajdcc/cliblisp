@@ -17,6 +17,7 @@ namespace clib {
         ast_root,
         ast_env,
         ast_sub,
+        ast_lambda,
         ast_sexpr,
         ast_qexpr,
         ast_literal,
@@ -87,7 +88,6 @@ namespace clib {
         static ast_node *set_sibling(ast_node*, ast_node*);
         static int children_size(ast_node*);
 
-        void set_id(ast_node *node, const string_t &str);
         void set_str(ast_node *node, const string_t &str);
         static std::string display_str(const char *str);
 

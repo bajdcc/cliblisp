@@ -32,6 +32,7 @@ namespace clib {
         add_builtin(_env, "-", val_sub("-", builtins::sub));
         add_builtin(_env, "*", val_sub("*", builtins::mul));
         add_builtin(_env, "/", val_sub("/", builtins::div));
+        add_builtin(_env, "\\", val_sub("\\", builtins::lambda));
 #define ADD_BUILTIN(name) add_builtin(_env, #name, val_sub(#name, builtins::name))
         ADD_BUILTIN(eval);
         ADD_BUILTIN(quote);
@@ -274,8 +275,8 @@ namespace clib {
             }
             param = op->val._v.child;
             _this->mem.push_root(env);
+            auto &_env = *env->val._env.env;
             for (auto i = 0; i < op->val._v.count; ++i) {
-                auto &_env = *env->val._env.env;
                 auto name = param->val._string;
                 auto old = _env.find(name);
                 if (old != _env.end()) {
@@ -291,5 +292,51 @@ namespace clib {
             _this->error("def need same size of Q-exp and argument");
             return nullptr;
         }
+    }
+
+    cval *builtins::lambda(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 3)
+            _this->error("lambda requires 2 args");
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            _this->error("lambda need Q-exp for first argument");
+        if (op->next->type != ast_qexpr)
+            _this->error("lambda need Q-exp for second argument");
+        auto param = op->val._v.child;
+        for (auto i = 0; i < op->val._v.count; ++i) {
+            if (param->type != ast_literal) {
+                _this->error("lambda need valid argument type");
+            }
+            param = param->next;
+        }
+        auto v = _this->val_obj(ast_lambda);
+        _this->mem.push_root(v);
+        v->val._lambda.param = _this->copy(op);
+        v->val._lambda.body = _this->copy(op->next);
+        v->val._lambda.body->type = ast_sexpr;
+        _this->mem.pop_root();
+        return v;
+    }
+
+    cval *builtins::call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env) {
+        auto _this = vm;
+        if (val->val._v.count != param->val._v.count + 1)
+            _this->error("lambda need valid argument size");
+        auto op = VM_OP(val);
+        auto _param = param->val._v.child;
+        auto _argument = op;
+        auto new_env = _this->new_env(env);
+        auto &_env = *new_env->val._env.env;
+        _this->mem.push_root(new_env);
+        while (_param) {
+            auto name = _param->val._string;
+            _env[name] = _this->copy(_argument);
+            _param = _param->next;
+            _argument = _argument->next;
+        }
+        auto ret = _this->eval(body, new_env);
+        _this->mem.pop_root();
+        return ret;
     }
 }
