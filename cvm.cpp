@@ -23,7 +23,7 @@ namespace clib {
         global_env->val._env.parent = nullptr;
         mem.push_root(global_env);
 #if SHOW_ALLOCATE_NODE
-        printf("[DEBUG] Allocate val node: %s, address: 0x%p\n", cast::ast_str(global_env->type).c_str(), global_env);
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s\n", global_env, cast::ast_str(global_env->type).c_str());
 #endif
         builtin_init();
         mem.pop_root();
@@ -86,12 +86,12 @@ namespace clib {
             case ast_sexpr:
                 if (!node->child)
                     error("S-exp: missing value");
-                if (node->child->flag == ast_literal) {
+                if (node->child->flag == ast_literal || node->child->flag == ast_sexpr) {
                     auto v = val_obj(type);
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-                    printf("[DEBUG] Allocate val node: %s, count: %d, address: 0x%p\n", cast::ast_str(type).c_str(),
-                           cast::children_size(node), v);
+                    printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, count: %d\n", v, cast::ast_str(type).c_str(),
+                           cast::children_size(node));
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
@@ -107,8 +107,9 @@ namespace clib {
                     }
                     mem.pop_root();
                     return eval(v, env);
-                } else
+                } else {
                     error("S-exp: missing literal");
+                }
                 break;
             case ast_qexpr:
                 if (!node->child) {
@@ -120,8 +121,8 @@ namespace clib {
                     auto v = val_obj(type);
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-                    printf("[DEBUG] Allocate val node: %s, count: %d, address: 0x%p\n", cast::ast_str(type).c_str(),
-                           cast::children_size(node), node);
+                    printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, count: %d\n", node, cast::ast_str(type).c_str(),
+                           cast::children_size(node));
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
@@ -141,16 +142,16 @@ namespace clib {
             case ast_string: {
                 auto v = val_str(type, node->data._string);
 #if SHOW_ALLOCATE_NODE
-                printf("[DEBUG] Allocate val node: %s, val: %s, address: 0x%p\n", cast::ast_str(type).c_str(),
-                    v->val._string, v);
+                printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, val: %s\n", v, cast::ast_str(type).c_str(),
+                       v->val._string);
 #endif
                 return v;
             }
             case ast_literal: {
                 auto v = val_str(type, node->data._string);
 #if SHOW_ALLOCATE_NODE
-                printf("[DEBUG] Allocate val node: %s, id: %s, address: 0x%p\n", cast::ast_str(type).c_str(),
-                    v->val._string, v);
+                printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, val: %s\n", v, cast::ast_str(type).c_str(),
+                       v->val._string);
 #endif
                 return quote ? v : eval(v, env);
             }
@@ -159,9 +160,9 @@ namespace clib {
             case ast_##t: { \
                 auto v = val_obj(type); \
                 v->val._##t = node->data._##t; \
-                printf("[DEBUG] Allocate val node: %s, val: ", cast::ast_str(type).c_str()); \
+                printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, val: ", v, cast::ast_str(type).c_str()); \
                 print(v, std::cout); \
-                printf(", address: 0x%p\n", v); \
+                std::cout << std::endl; \
                 return v; }
 #else
 #define DEFINE_VAL(t) \
@@ -207,7 +208,15 @@ namespace clib {
             case ast_sub:
                 os << "<subroutine \"" << sub_name(val) << "\">";
                 break;
-            case ast_sexpr:
+            case ast_sexpr: {
+                    os << '(';
+                    auto head = val->val._v.child;
+                    while (head) {
+                        print(head, os);
+                        head = head->next;
+                    }
+                    os << ')';
+                }
                 break;
             case ast_qexpr:
                 if (val->val._v.count == 0) {
@@ -279,7 +288,7 @@ namespace clib {
     void cvm::gc() {
         mem.gc();
 #if SHOW_ALLOCATE_NODE
-        printf("[DEBUG] Alive objects: %lu\n", mem.count());
+        printf("[DEBUG] MEM   | Alive objects: %lu\n", mem.count());
 #endif
     }
 
@@ -335,7 +344,9 @@ namespace clib {
                 break;
         }
 #if SHOW_ALLOCATE_NODE
-        printf("[DEBUG] Copy node: %s, address: 0x%p\n", cast::ast_str(val->type).c_str(), new_val);
+        printf("[DEBUG] COPY  | addr: 0x%p, node: %-10s, val: ", new_val, cast::ast_str(val->type).c_str());
+        print(val, std::cout);
+        std::cout << std::endl;
 #endif
         return new_val;
     }
@@ -370,7 +381,6 @@ namespace clib {
                     return val_obj(ast_qexpr);
                 }
             }
-                break;
             case ast_literal:
                 return calc_symbol(val->val._string, env);
             default:
@@ -382,7 +392,7 @@ namespace clib {
 #if SHOW_ALLOCATE_NODE
         mem.set_callback([](void *ptr) {
             cval *val = (cval *) ptr;
-            printf("[DEBUG] GC free: 0x%p, node: %s, ", ptr, cast::ast_str(val->type).c_str());
+            printf("[DEBUG] GC    | free: 0x%p, node: %-10s, ", ptr, cast::ast_str(val->type).c_str());
             if (val->type == ast_sexpr || val->type == ast_qexpr) {
                 printf("count: %lu\n", children_size(val));
             } else if (val->type == ast_literal) {

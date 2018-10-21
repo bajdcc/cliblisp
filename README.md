@@ -141,6 +141,8 @@ lisp> car (list 1 2 3)
 1
 lisp> cdr (list 1 2 3)
 `(2 3)
+lisp> (eval (car (list + - * /))) 1 1
+2
 ```
 
 ## 改进

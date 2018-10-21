@@ -352,12 +352,12 @@ namespace clib {
 
         void dump(std::ostream &os) {
             auto ptr = block_head;
-            printf("[DEBUG] Memory pool | Available: %lu\n", block_available_size);
+            printf("[DEBUG] MEM   | Available: %lu\n", block_available_size);
             if (ptr->next == ptr) {
                 if (block_get_flag(ptr, BLOCK_USING)) {
                     dump_block(ptr, os);
                 } else {
-                    os << "[DEBUG] Memory pool | All Free." << std::endl;
+                    os << "[DEBUG] MEM   | All Free." << std::endl;
                 }
             } else {
                 dump_block(ptr, os);
@@ -371,7 +371,7 @@ namespace clib {
 
     private:
         static void dump_block(block *blk, std::ostream &os) {
-            printf("[DEBUG] Memory pool | [%p-%p] Size: %lu, State: %s\n", blk, blk + blk->size, blk->size, block_get_flag(blk, BLOCK_USING) ? "Using" : "Free");
+            printf("[DEBUG] MEM   | [%p-%p] Size: %8lu, State: %s\n", blk, blk + blk->size, blk->size, block_get_flag(blk, BLOCK_USING) ? "Using" : "Free");
         }
     };
 

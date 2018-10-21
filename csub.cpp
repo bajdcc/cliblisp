@@ -19,7 +19,7 @@ namespace clib {
     static void add_builtin(cenv &env, const char *name, cval *val) {
         env.insert(std::make_pair(name, val));
 #if SHOW_ALLOCATE_NODE
-        printf("[DEBUG] Allocate val node: %s, name: %s, address: 0x%p\n", cast::ast_str(val->type).c_str(), name, val);
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for builtin\n", val, cast::ast_str(val->type).c_str());
 #endif
     }
 
@@ -171,7 +171,7 @@ namespace clib {
         auto v = _this->val_obj(ast_qexpr);
         _this->mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-        printf("[DEBUG] Allocate val node: %s, for quote, address: 0x%p\n", cast::ast_str(v->type).c_str(), v);
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for quote\n", v, cast::ast_str(v->type).c_str());
 #endif
         v->val._v.count = 1;
         v->val._v.child = _this->copy(op);
@@ -185,7 +185,7 @@ namespace clib {
         auto v = _this->val_obj(ast_qexpr);
         _this->mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-        printf("[DEBUG] Allocate val node: %s, for list, address: 0x%p\n", cast::ast_str(v->type).c_str(), v);
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for list\n", v, cast::ast_str(v->type).c_str());
 #endif
         auto i = op;
         auto local = _this->copy(i);
@@ -230,7 +230,7 @@ namespace clib {
                 auto v = _this->val_obj(ast_qexpr);
                 _this->mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
-                printf("[DEBUG] Allocate val node: %s, for cdr, address: 0x%p\n", cast::ast_str(v->type).c_str(), v);
+                printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for cdr\n", v, cast::ast_str(v->type).c_str());
 #endif
                 auto i = op->val._v.child->next;
                 auto local = _this->copy(i);
