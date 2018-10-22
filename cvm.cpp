@@ -73,6 +73,23 @@ namespace clib {
         return v;
     }
 
+    static cval **lambda_env(cval *val) {
+        return (cval **)((char *)val + sizeof(cval));
+    }
+
+    cval *cvm::val_lambda(cval *param, cval *body, cval *env) {
+        auto v = (cval *) mem.alloc(sizeof(cval) + sizeof(cval *));
+        v->type = ast_lambda;
+        v->next = nullptr;
+        mem.push_root(v);
+        v->val._lambda.param = copy(param);
+        v->val._lambda.body = copy(body);
+        v->val._lambda.body->type = ast_sexpr;
+        *lambda_env(v) = env;
+        mem.pop_root();
+        return v;
+    }
+
     static char *sub_name(cval *val) {
         return (char*)val + sizeof(cval);
     }
@@ -324,13 +341,7 @@ namespace clib {
                 error("not supported");
                 break;
             case ast_lambda:
-                new_val = val_obj(val->type);
-                {
-                    mem.push_root(new_val);
-                    new_val->val._lambda.param = copy(val->val._lambda.param);
-                    new_val->val._lambda.body = copy(val->val._lambda.body);
-                    mem.pop_root();
-                }
+                new_val = val_lambda(val->val._lambda.param, val->val._lambda.body, *lambda_env(val));
                 break;
             case ast_sub:
                 new_val = val_sub(val);
@@ -419,7 +430,8 @@ namespace clib {
                         case ast_lambda: {
                             auto param = op->val._lambda.param;
                             auto body = op->val._lambda.body;
-                            return calc_lambda(param, body, val, env);
+                            // 这里需要从lambda对象中取出上下文（闭包）
+                            return calc_lambda(param, body, val, *lambda_env(op));
                         }
                         case ast_literal: {
                             auto v = val_obj(val->type);
@@ -431,6 +443,12 @@ namespace clib {
                             v->val._v.child = nullptr;
                             auto i = op;
                             auto local = eval(i, env);
+                            auto quote = false;
+                            if (local->type == ast_sub) {
+                                if (strstr(sub_name(local), "quote")) {
+                                    quote = true;
+                                }
+                            }
                             v->val._v.child = local;
                             v->val._v.count++;
                             i = i->next;
@@ -441,7 +459,33 @@ namespace clib {
                                 i = i->next;
                             }
                             mem.pop_root();
-                            return eval(v, env);
+                            return quote ? v : eval(v, env);
+                        }
+                        case ast_sexpr: {
+                            auto v = val_obj(op->type);
+                            mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+                            printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s\n", v, cast::ast_str(op->type).c_str());
+#endif
+                            v->val._v.child = nullptr;
+                            auto i = val->val._v.child;
+                            auto local = eval(i, env);
+                            v->val._v.child = local;
+                            v->val._v.count = val->val._v.count;
+                            i = i->next;
+                            auto quote = false;
+                            if (local->type == ast_sub) {
+                                if (strstr(sub_name(local), "quote")) {
+                                    quote = true;
+                                }
+                            }
+                            while (i) {
+                                local->next = eval(i, env);
+                                local = local->next;
+                                i = i->next;
+                            }
+                            mem.pop_root();
+                            return quote ? v : eval(v, env);
                         }
                         default:
                             break;

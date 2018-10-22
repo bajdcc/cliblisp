@@ -424,13 +424,11 @@ namespace clib {
             }
             param = param->next;
         }
-        auto v = _this->val_obj(ast_lambda);
-        _this->mem.push_root(v);
-        v->val._lambda.param = _this->copy(op);
-        v->val._lambda.body = _this->copy(op->next);
-        v->val._lambda.body->type = ast_sexpr;
-        _this->mem.pop_root();
-        return v;
+        return _this->val_lambda(op, op->next, env);
+    }
+
+    static cval **lambda_env(cval *val) {
+        return (cval **)((char *)val + sizeof(cval));
     }
 
     cval *builtins::call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env) {
@@ -451,6 +449,18 @@ namespace clib {
         }
         auto ret = _this->eval(body, new_env);
         _this->mem.pop_root();
+        if (ret->type == ast_lambda) {
+            // 当前环境是取自上一层环境env
+            // 同时新建一层环境new_env
+            // 形参从属于new_env
+            // new_env从属于调用lambda时的上下文
+            // 当调用结束时，new_env便会销毁
+            // 因此必须令new_env从属于lambda对象
+            auto old_env = *lambda_env(ret);
+            *lambda_env(ret) = new_env;
+            new_env->val._env.parent = old_env;
+            _this->mem.link(ret, new_env);
+        }
         return ret;
     }
 

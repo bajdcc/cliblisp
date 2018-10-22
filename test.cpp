@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
             TEST(R"(def `twice (\ `(x) `(* 2 x)))", R"(<lambda `x `(* 2 x)>)"),
             TEST(R"(twice 5)", "10"),
             TEST(R"(def `compose (\ `(f g) `(\ `(x) `(f (g x)))))", R"(<lambda `(f g) `(\ `x `(f (g x)))>)"),
-            TEST(R"((compose list twice) 5)", "(10)"),
+            TEST(R"((compose list twice) 5)", "`10"),
             TEST(R"(def `repeat (\ `(f) `(compose f f)))", "<lambda `f `(compose f f)>"),
             TEST(R"((repeat twice) 5)", "20"),
             TEST(R"((repeat (repeat twice)) 5)", "80"),
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
             TEST(R"(fact 12)", "479001600"),
             TEST(R"(def `abs (\ `(n) `((if (> n 0) `+ `-) 0 n)))", "<lambda `n `((if (> n 0) `+ `-) 0 n)>"),
             TEST(R"(abs -3)", "3"),
-            TEST(R"(list (abs -3) (abs 0) (abs 3))", "(3 0 3)"),
+            TEST(R"(list (abs -3) (abs 0) (abs 3))", "`(3 0 3)"),
             TEST(R"(def `combine (\ `(f)
                  `(\ `(x y)
                  (if (null? x) `nil

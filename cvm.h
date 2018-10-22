@@ -95,6 +95,7 @@ namespace clib {
         cval *val_sub(const char *name, csub sub);
         cval *val_sub(cval *val);
         cval *val_bool(bool flag);
+        cval *val_lambda(cval *param, cval *body, cval *env);
 
         cval *copy(cval *val);
         cval *new_env(cval *env);
