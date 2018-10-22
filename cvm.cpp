@@ -28,6 +28,7 @@ namespace clib {
         builtin_init();
         mem.pop_root();
         mem.protect(global_env);
+        builtin_load();
     }
 
     cval *cvm::val_obj(ast_t type) {
@@ -105,6 +106,11 @@ namespace clib {
                     v->val._v.child = local;
                     v->val._v.count++;
                     i = i->next;
+                    if (local->type == ast_sub) {
+                        if (strstr(sub_name(local),  "quote")) {
+                            quote = true;
+                        }
+                    }
                     while (i != node->child) {
                         v->val._v.count++;
                         local->next = run_rec(i, env, quote);

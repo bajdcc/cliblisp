@@ -19,3 +19,20 @@ add_executable(cliblisp
         cvm.h
         csub.cpp
         csub.h)
+
+add_executable(cliblisp-test
+        test.cpp
+        memory.h
+        memory_gc.h
+        types.h
+        types.cpp
+        clexer.h
+        clexer.cpp
+        cparser.h
+        cparser.cpp
+        cast.h
+        cast.cpp
+        cvm.cpp
+        cvm.h
+        csub.cpp
+        csub.h)

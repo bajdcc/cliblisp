@@ -66,7 +66,7 @@ namespace clib {
     private:
         std::vector<err_record_t> records;
 
-        lexer_t record_error(error_t error, int skip);
+        lexer_t record_error(error_t error, uint skip);
 
     public:
         lexer_t next();
@@ -83,10 +83,10 @@ namespace clib {
         lexer_t digit_type(lexer_t t, uint &i);
         bool digit_from_integer(lexer_t t, LEX_T(ulong) n);
         bool digit_from_double(lexer_t t, LEX_T(double) n);
-        lexer_t digit_return(lexer_t t, LEX_T(ulong) n, LEX_T(double) d, int i);
+        lexer_t digit_return(lexer_t t, LEX_T(ulong) n, LEX_T(double) d, uint i);
 
     private:
-        void move(int idx, int inc = -1);
+        void move(uint idx, int inc = -1);
 
         // 内部解析
         lexer_t next_digit();

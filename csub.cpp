@@ -7,6 +7,7 @@
 #include <sstream>
 #include "cvm.h"
 #include "csub.h"
+#include "cparser.h"
 
 #define VM_THIS(val) ((cvm *)val->val._v.child->val._sub.vm)
 #define VM_OP(val) (val->val._v.child->next)
@@ -21,6 +22,37 @@ namespace clib {
 #if SHOW_ALLOCATE_NODE
         printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for builtin\n", val, cast::ast_str(val->type).c_str());
 #endif
+    }
+
+    void cvm::builtin_load() {
+        // Load init code
+        auto codes = std::vector<std::string>{
+                "def `cadr (\\ `x `(car (cdr x)))",
+                "def `caar (\\ `x `(car (car x)))",
+                "def `cdar (\\ `x `(cdr (car x)))",
+                "def `cddr (\\ `x `(cdr (cdr x)))",
+        };
+        try {
+            for (auto &code : codes) {
+                save();
+                cparser p(code);
+                auto root = p.parse();
+                auto val = run(root);
+#if SHOW_ALLOCATE_NODE
+                std::cout << "builtin> ";
+                cast::print(root, 0, std::cout);
+                std::cout << std::endl;
+                cvm::print(val, std::cout);
+                std::cout << std::endl;
+#endif
+                gc();
+            }
+        } catch (const std::exception &e) {
+            printf("RUNTIME ERROR: %s\n", e.what());
+            restore();
+            gc();
+            exit(-1);
+        }
     }
 
     void cvm::builtin_init() {
@@ -40,6 +72,7 @@ namespace clib {
         add_builtin(_env, "==", val_sub("==", builtins::eq));
         add_builtin(_env, "!=", val_sub("!=", builtins::ne));
         add_builtin(_env, "if", val_sub("if", builtins::_if));
+        add_builtin(_env, "null?", val_sub("null?", builtins::is_null));
 #define ADD_BUILTIN(name) add_builtin(_env, #name, val_sub(#name, builtins::name))
         ADD_BUILTIN(eval);
         ADD_BUILTIN(quote);
@@ -48,6 +81,7 @@ namespace clib {
         ADD_BUILTIN(cdr);
         ADD_BUILTIN(def);
         ADD_BUILTIN(len);
+        ADD_BUILTIN(begin);
 #undef ADD_BUILTIN
     }
 
@@ -364,6 +398,9 @@ namespace clib {
                 argument = argument->next;
             }
             _this->mem.pop_root();
+            if (op->val._v.count == 1) {
+                return _env[op->val._v.child->val._string];
+            }
             return VM_NIL(_this);
         } else {
             _this->error("def need same size of Q-exp and argument");
@@ -441,6 +478,17 @@ namespace clib {
         return VM_CALL("!=");
     }
 
+    cval *builtins::begin(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 4)
+            _this->error("if requires 3 args");
+        auto op = VM_OP(val);
+        while (op->next) {
+            op = op->next;
+        }
+        return op;
+    }
+
     cval *builtins::_if(cval *val, cval *env) {
         auto _this = VM_THIS(val);
         if (val->val._v.count != 4)
@@ -472,5 +520,13 @@ namespace clib {
         auto v = _this->val_obj(ast_int);
         v->val._int = (int) op->val._v.count;
         return v;
+    }
+
+    cval *builtins::is_null(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 2)
+            _this->error("null? requires 1 args");
+        auto op = VM_OP(val);
+        return _this->val_bool(op->type == ast_qexpr && op->val._v.count == 0);
     }
 }

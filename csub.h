@@ -33,9 +33,12 @@ namespace clib {
         static cval *eq(cval *val, cval *env);
         static cval *ne(cval *val, cval *env);
 
+        static cval *begin(cval *val, cval *env);
         static cval *_if(cval *val, cval *env);
 
         static cval *len(cval *val, cval *env);
+
+        static cval *is_null(cval *val, cval *env);
     };
 }
 

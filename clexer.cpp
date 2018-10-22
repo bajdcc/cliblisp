@@ -6,6 +6,7 @@
 #include <cassert>
 #include <climits>
 #include <sstream>
+#include <cstring>
 #include "clexer.h"
 
 namespace clib {
@@ -63,7 +64,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
 #undef DEFINE_LEXER_GETTER
 
     // 记录错误
-    lexer_t clexer::record_error(error_t error, int skip) {
+    lexer_t clexer::record_error(error_t error, uint skip) {
         err_record_t err{};
         err.line = line; // 起始行
         err.column = column; // 起始列
@@ -92,8 +93,38 @@ LEX_T(t) clexer::get_store_##t(int index) const \
             type = next_alpha();
         } else if (c == '\"') { // 字符串
             type = next_string();
-        } else if (isdigit(c)) { // 数字
-            type = next_digit();
+        } else if (isdigit(c) || (c == '-' && isdigit(local(1)))) { // 数字
+            if (c == '-') {
+                move(1);
+                type = next_digit();
+                if (type == l_error)
+                    return type;
+                switch (type) {
+                    case l_char:
+                        bags._char = -bags._char;
+                        break;
+                    case l_short:
+                        bags._short = -bags._short;
+                        break;
+                    case l_int:
+                        bags._int = -bags._int;
+                        break;
+                    case l_long:
+                        bags._long = -bags._long;
+                        break;
+                    case l_float:
+                        bags._float = -bags._float;
+                        break;
+                    case l_double:
+                        bags._double = -bags._double;
+                        break;
+                    default:
+                        break;
+                }
+                return type;
+            } else {
+                type = next_digit();
+            }
         } else if (isspace(c)) { // 空白字符
             type = next_space();
         } else if (c == '\'') { // 字符
@@ -175,7 +206,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
 
 
 
-    void clexer::move(int idx, int inc) {
+    void clexer::move(uint idx, int inc) {
         last_index = index;
         last_line = line;
         last_column = column;
@@ -308,7 +339,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
     }
 
     // 返回数字（依照目前识别的类型）
-    lexer_t clexer::digit_return(lexer_t t, LEX_T(ulong) n, LEX_T(double) d, int i) {
+    lexer_t clexer::digit_return(lexer_t t, LEX_T(ulong) n, LEX_T(double) d, uint i) {
         if (t == l_int) {
             bags._int = (int) n;
         } else if (t == l_double) {
@@ -364,7 +395,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
                     if (n > INT_MAX)
                         _type = l_long;
                 } else if (_type == l_long) { // 超过long范围，转为double
-                    if (n > LONG_LONG_MAX) {
+                    if (n >> 4 != _n) {
                         d = (double) _n;
                         d *= 16.0;
                         d += cc;
@@ -385,10 +416,11 @@ LEX_T(t) clexer::get_store_##t(int index) const \
                 n += str[i] - '0';
             }
             if (_type == l_int) { // 超过int范围，转为long
-                if (n > INT_MAX)
+                if (n > INT_MAX) {
                     _type = l_long;
+                }
             } else if (_type == l_long) { // 超过long范围，转为double
-                if (n > LONG_LONG_MAX) {
+                if (n / 10 != _n) {
                     d = (double) _n;
                     d *= 10.0;
                     d += str[i] - '0';
@@ -464,8 +496,9 @@ LEX_T(t) clexer::get_store_##t(int index) const \
     }
 
     lexer_t clexer::next_alpha() {
+        static const char *valid_id = "?-";
         sint i;
-        for (i = index + 1; i < length && (isalnum(str[i]) || str[i] == '_'); i++);
+        for (i = index + 1; i < length && (isalnum(str[i]) || str[i] == '_' || strchr(valid_id, str[i])); i++);
         auto s = str.substr(index, i - index);
         bags._identifier = s;
         move(s.length());
@@ -538,7 +571,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
             }
             return record_error(e_invalid_char, 4);
         }
-        sint i;
+        uint i;
         // 寻找 '\'' 的右边界（限定）
         for (i = 1; index + i < length && str[index + i] != '\'' && i <= 4; i++);
         if (i == 1) { // ''
@@ -580,7 +613,7 @@ LEX_T(t) clexer::get_store_##t(int index) const \
                 return record_error(e_invalid_char, i);
             } else if (i == 3) { // '?'
                 bags._char = str[index + 1];
-                move(i);
+                move((uint) i);
                 return l_char;
             }
         }
@@ -675,7 +708,8 @@ LEX_T(t) clexer::get_store_##t(int index) const \
         }
         if (p == op__end) {
             sint i;
-            for (i = index + 1; i < length && !(isalnum(str[i]) || isspace(str[i])); i++);
+            for (i = index + 1; i < length && sinOp[str[i]] == op__end &&
+                !(isalnum(str[i]) || isspace(str[i])); i++);
             auto s = str.substr(index, i - index);
             bags._identifier = s;
             move(s.length());

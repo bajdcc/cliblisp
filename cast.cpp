@@ -176,12 +176,12 @@ namespace clib {
                 break;
             case ast_qexpr:
                 os << '`';
-                if (node->child->child) {
+                if (node->child == node->child->next) {
+                    ast_recursion(node->child, level + 1, os, rec);
+                } else {
                     os << '(';
                     ast_recursion(node->child, level + 1, os, rec);
                     os << ')';
-                } else {
-                    rec(node->child, level + 1, os);
                 }
                 break;
             case ast_literal:
@@ -229,7 +229,8 @@ namespace clib {
                 break;
         }
         if (node->parent) {
-            if (node->parent->flag == ast_sexpr && node->next != node->parent->child) {
+            if ((node->parent->flag == ast_qexpr  || node->parent->flag == ast_sexpr) &&
+                node->next != node->parent->child) {
                 os << ' ';
             }
         }

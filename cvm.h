@@ -81,6 +81,7 @@ namespace clib {
     private:
         void builtin();
         void builtin_init();
+        void builtin_load();
         cval *run_rec(ast_node *node, cval *env, bool quote);
 
         int calc(int op, ast_t type, cval *r, cval *v, cval *env);
