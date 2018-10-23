@@ -85,7 +85,17 @@ namespace clib {
         v->val._lambda.param = copy(param);
         v->val._lambda.body = copy(body);
         v->val._lambda.body->type = ast_sexpr;
-        *lambda_env(v) = env;
+        if (env == global_env) {
+            *lambda_env(v) = env;
+        } else {
+            auto _env = *lambda_env(v) = new_env(env->val._env.parent);
+            mem.push_root(_env);
+            auto &_new_env = *_env->val._env.env;
+            for (auto &en : *env->val._env.env) {
+                _new_env.insert(std::make_pair(en.first, copy(en.second)));
+            }
+            mem.pop_root();
+        }
         mem.pop_root();
         return v;
     }
@@ -327,6 +337,9 @@ namespace clib {
     }
 
     void cvm::gc() {
+#if SHOW_ALLOCATE_NODE
+        dump();
+#endif
         mem.gc();
 #if SHOW_ALLOCATE_NODE
         printf("[DEBUG] MEM   | Alive objects: %lu\n", mem.count());
@@ -522,6 +535,25 @@ namespace clib {
             } else if (val->type == ast_env) {
                 printf("env: %d\n", val->val._env.env->size());
                 delete val->val._env.env;
+            } else if (val->type == ast_sub) {
+                printf("name: %s\n", sub_name(val));
+            } else {
+                printf("val: ");
+                print(val, std::cout);
+                std::cout << std::endl;
+            }
+        });
+        mem.set_dump_callback([](void *ptr, int level) {
+            cval *val = (cval *) ptr;
+            printf("[DEBUG] DUMP  | ");
+            std::cout << std::setfill('_') << std::setw(level << 2) << "";
+            printf("addr: 0x%p, node: %-10s, ", ptr, cast::ast_str(val->type).c_str());
+            if (val->type == ast_sexpr || val->type == ast_qexpr) {
+                printf("count: %lu\n", children_size(val));
+            } else if (val->type == ast_literal) {
+                printf("id: %s\n", val->val._string);
+            } else if (val->type == ast_env) {
+                printf("env: %d\n", val->val._env.env->size());
             } else if (val->type == ast_sub) {
                 printf("name: %s\n", sub_name(val));
             } else {

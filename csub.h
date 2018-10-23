@@ -21,6 +21,7 @@ namespace clib {
         static cval *list(cval *val, cval *env);
         static cval *car(cval *val, cval *env);
         static cval *cdr(cval *val, cval *env);
+        static cval *cons(cval *val, cval *env);
 
         static cval *def(cval *val, cval *env);
         static cval *lambda(cval *val, cval *env);

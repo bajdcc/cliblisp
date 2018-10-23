@@ -104,6 +104,12 @@ namespace clib {
             _unlink(_parent, _ptr);
         }
 
+        void unlink(void *ptr) {
+            auto _parent = stack_roots.back();
+            auto _ptr = header(ptr);
+            _unlink(_parent, _ptr);
+        }
+
         void protect(void *ptr) {
             roots.insert(header(ptr));
         }
@@ -125,6 +131,10 @@ namespace clib {
             gc_callback = callback;
         }
 
+        void set_dump_callback(std::function<void(void *, int)> callback) {
+            dump_callback = callback;
+        }
+
         void save_stack() {
             saved_stack = stack_roots.size();
         }
@@ -135,6 +145,7 @@ namespace clib {
 
         void dump(std::ostream &os) {
             memory.dump(os);
+            dump_tree();
         }
 
     private:
@@ -224,10 +235,36 @@ namespace clib {
             }
         }
 
+        void dump_children(gc_header *ptr, int level) {
+            dump_callback(data(ptr), level);
+            if (ptr->child) {
+                auto i = ptr->child;
+                dump_children(i, level + 1);
+                i = i->next;
+                while (i != ptr->child) {
+                    dump_children(i, level + 1);
+                    i = i->next;
+                }
+            }
+        }
+
+        void dump_tree() {
+            if (!dump_callback)
+                return;
+            for (auto &root : roots) {
+                dump_children(root, 0);
+            }
+            for (auto it = stack_roots.begin() + 1; it != stack_roots.end(); it++) {
+                auto &root = *it;
+                dump_children(root, 0);
+            }
+        }
+
     private:
         size_t saved_stack{0};
         gc_header stack_head{nullptr, nullptr, nullptr};
         std::function<void(void *)> gc_callback{[](void *) {}};
+        std::function<void(void *, int)> dump_callback{[](void *, int) {}};
         std::vector<gc_header *> objects;
         std::vector<gc_header *> stack_roots;
         std::unordered_set<gc_header *> roots;

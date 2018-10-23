@@ -79,6 +79,7 @@ namespace clib {
         ADD_BUILTIN(list);
         ADD_BUILTIN(car);
         ADD_BUILTIN(cdr);
+        ADD_BUILTIN(cons);
         ADD_BUILTIN(def);
         ADD_BUILTIN(len);
         ADD_BUILTIN(begin);
@@ -368,6 +369,52 @@ namespace clib {
         }
     }
 
+    cval *builtins::cons(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 3)
+            _this->error("cons requires 2 args");
+        auto op = VM_OP(val);
+        auto op2 = op->next;
+        if (op->type != ast_qexpr)
+            _this->error("cons need Q-exp for first argument");
+        if (op2->type != ast_qexpr)
+            _this->error("cons need Q-exp for second argument");
+        // if (op->val._v.count != 1)
+        //     _this->error("cons need Q-exp(only one child) for first argument");
+        // if (op2->val._v.count < 2)
+        //     _this->error("cons need Q-exp(more than one child) for first argument");
+        if (op2->val._v.count == 0) {
+            auto v = _this->val_obj(ast_qexpr);
+            _this->mem.push_root(v);
+            v->val._v.child = _this->copy(op);
+            v->val._v.count = 1;
+            _this->mem.pop_root();
+            return v;
+        }
+        auto v = _this->val_obj(ast_qexpr);
+        _this->mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for cons\n", v, cast::ast_str(v->type).c_str());
+#endif
+        if (op->val._v.count == 1) {
+            v->val._v.child = _this->copy(op->val._v.child);
+        } else {
+            v->val._v.child = _this->copy(op);
+        }
+        v->val._v.count = 1 + op2->val._v.count;
+        auto i = op2->val._v.child;
+        auto local = _this->copy(i);
+        v->val._v.child->next = local;
+        i = i->next;
+        while (i) {
+            local->next = _this->copy(i);
+            local = local->next;
+            i = i->next;
+        }
+        _this->mem.pop_root();
+        return v;
+    }
+
     cval *builtins::def(cval *val, cval *env) {
         auto _this = VM_THIS(val);
         if (val->val._v.count <= 2)
@@ -439,6 +486,7 @@ namespace clib {
         auto _param = param->val._v.child;
         auto _argument = op;
         auto new_env = _this->new_env(env);
+        _this->mem.unlink(new_env);
         auto &_env = *new_env->val._env.env;
         _this->mem.push_root(new_env);
         while (_param) {
@@ -447,21 +495,8 @@ namespace clib {
             _param = _param->next;
             _argument = _argument->next;
         }
-        auto ret = _this->eval(body, new_env);
         _this->mem.pop_root();
-        if (ret->type == ast_lambda) {
-            // 当前环境是取自上一层环境env
-            // 同时新建一层环境new_env
-            // 形参从属于new_env
-            // new_env从属于调用lambda时的上下文
-            // 当调用结束时，new_env便会销毁
-            // 因此必须令new_env从属于lambda对象
-            auto old_env = *lambda_env(ret);
-            *lambda_env(ret) = new_env;
-            new_env->val._env.parent = old_env;
-            _this->mem.link(ret, new_env);
-        }
-        return ret;
+        return _this->eval(body, new_env);
     }
 
     cval *builtins::lt(cval *val, cval *env) {

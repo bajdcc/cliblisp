@@ -53,12 +53,13 @@ int main(int argc, char *argv[]) {
             TEST(R"(list (abs -3) (abs 0) (abs 3))", "`(3 0 3)"),
             TEST(R"(def `combine (\ `(f)
                  `(\ `(x y)
-                 (if (null? x) `nil
+                 `(if (null? x) `nil
                  `(f (list (car x) (car y))
                  ((combine f) (cdr x) (cdr y)))))))",
-                 R"(<lambda `f `(\ `(x y) (if (null? x) `nil `(f (list (car x) (car y)) ((combine f) (cdr x) (cdr y)))))>)"),
-            TEST(R"(def `zip (combine cons))", "<Lambda>"),
-            TEST(R"(zip (list 1 2 3 4) (list 5 6 7 8))", "((1 5) (2 6) (3 7) (4 8))"),
+                 R"(<lambda `f `(\ `(x y) `(if (null? x) `nil `(f (list (car x) (car y)) ((combine f) (cdr x) (cdr y)))))>)"),
+            TEST(R"(def `zip (combine cons))",
+                    "<lambda `(x y) `(if (null? x) `nil `(f (list (car x) (car y)) ((combine f) (cdr x) (cdr y))))>"),
+            TEST(R"(zip (list 1 2 3 4) (list 5 6 7 8))", "`(`(1 5) `(2 6) `(3 7) `(4 8))"),
             TEST(R"(def `riff-shuffle (\ `(deck) `(begin
                  (def `take (\ `(n seq) `(if (<= n 0) `nil `(cons (car seq) (take (- n 1) (cdr seq))))))
                  (def `drop (\ `(n seq) `(if (<= n 0) `seq `(drop (- n 1) (cdr seq)))))
@@ -74,6 +75,7 @@ int main(int argc, char *argv[]) {
             TEST(R"(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", "(1 2 3 4 5 6 7 8)"),
     };
     auto i = 0;
+    auto failed = 0;
     std::stringstream ss;
     std::string ast, out;
     for (auto &code : codes) {
@@ -96,14 +98,17 @@ int main(int argc, char *argv[]) {
                 std::cout << "[PASSED] " << ast << "  =>  " << out;
             } else {
                 std::cout << "[ERROR ] " << ast << "  =>  " << out << "   REQUIRE: " << right;
+                failed++;
             }
             std::cout << std::endl;
             vm.gc();
         } catch (const std::exception &e) {
+            failed++;
             std::cout << "TEST #" << (++i) << "> [ERROR ] " << ast << std::endl;
             //printf("RUNTIME ERROR: %s\n", e.what());
             vm.restore();
             vm.gc();
         }
     }
+    std::cout << "==== ALL TEST PASSED [" << (i - failed) << "/" << i << "] ====" << std::endl;
 }
