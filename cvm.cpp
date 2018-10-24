@@ -84,7 +84,6 @@ namespace clib {
         mem.push_root(v);
         v->val._lambda.param = copy(param);
         v->val._lambda.body = copy(body);
-        v->val._lambda.body->type = ast_sexpr;
         if (env == global_env) {
             *lambda_env(v) = env;
         } else {
@@ -251,9 +250,7 @@ namespace clib {
                 os << "<lambda ";
                 print(val->val._lambda.param, os);
                 os << ' ';
-                val->val._lambda.body->type = ast_qexpr;
                 print(val->val._lambda.body, os);
-                val->val._lambda.body->type = ast_sexpr;
                 os << ">";
                 break;
             case ast_sub:
@@ -422,8 +419,8 @@ namespace clib {
         return nullptr;
     }
 
-    cval *cvm::calc_lambda(cval *param, cval *body, cval *val, cval *env) {
-        return builtins::call_lambda(this, param, body, val, env);
+    cval *cvm::calc_lambda(cval *param, cval *body, cval *val, cval *env, cval *env2) {
+        return builtins::call_lambda(this, param, body, val, env, env2);
     }
 
     cval *cvm::eval(cval *val, cval *env) {
@@ -444,7 +441,7 @@ namespace clib {
                             auto param = op->val._lambda.param;
                             auto body = op->val._lambda.body;
                             // 这里需要从lambda对象中取出上下文（闭包）
-                            return calc_lambda(param, body, val, *lambda_env(op));
+                            return calc_lambda(param, body, val, *lambda_env(op), env);
                         }
                         case ast_literal: {
                             auto v = val_obj(val->type);

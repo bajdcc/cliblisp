@@ -27,10 +27,10 @@ namespace clib {
     void cvm::builtin_load() {
         // Load init code
         auto codes = std::vector<std::string>{
-                "def `cadr (\\ `x `(car (cdr x)))",
-                "def `caar (\\ `x `(car (car x)))",
-                "def `cdar (\\ `x `(cdr (car x)))",
-                "def `cddr (\\ `x `(cdr (cdr x)))",
+                R"(def `cadr (\ `x `(car (cdr x))))",
+                R"(def `caar (\ `x `(car (car x))))",
+                R"(def `cdar (\ `x `(cdr (car x))))",
+                R"(def `cddr (\ `x `(cdr (cdr x))))",
         };
         try {
             for (auto &code : codes) {
@@ -82,6 +82,7 @@ namespace clib {
         ADD_BUILTIN(cons);
         ADD_BUILTIN(def);
         ADD_BUILTIN(len);
+        ADD_BUILTIN(append);
         ADD_BUILTIN(begin);
 #undef ADD_BUILTIN
     }
@@ -274,8 +275,12 @@ namespace clib {
         if (val->val._v.count > 2)
             _this->error("eval not support more than one args");
         auto op = VM_OP(val);
-        if (op->type == ast_qexpr)
+        if (op->type == ast_qexpr) {
             op->type = ast_sexpr;
+            auto ret = _this->eval(op, env);
+            op->type = ast_qexpr;
+            return ret;
+        }
         return _this->eval(op, env);
     }
 
@@ -298,6 +303,8 @@ namespace clib {
     cval *builtins::list(cval *val, cval *env) {
         auto _this = VM_THIS(val);
         auto op = VM_OP(val);
+        if (val->val._v.count == 2 && op->val._v.count == 0)
+            return _this->copy(op);
         auto v = _this->val_obj(ast_qexpr);
         _this->mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
@@ -375,8 +382,8 @@ namespace clib {
             _this->error("cons requires 2 args");
         auto op = VM_OP(val);
         auto op2 = op->next;
-        if (op->type != ast_qexpr)
-            _this->error("cons need Q-exp for first argument");
+        // if (op->type != ast_qexpr)
+        //     _this->error("cons need Q-exp for first argument");
         if (op2->type != ast_qexpr)
             _this->error("cons need Q-exp for second argument");
         // if (op->val._v.count != 1)
@@ -391,16 +398,15 @@ namespace clib {
             _this->mem.pop_root();
             return v;
         }
+
+        if (op2->type != ast_qexpr)
+            _this->error("cons need Q-exp for second argument");
         auto v = _this->val_obj(ast_qexpr);
         _this->mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
         printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for cons\n", v, cast::ast_str(v->type).c_str());
 #endif
-        if (op->val._v.count == 1) {
-            v->val._v.child = _this->copy(op->val._v.child);
-        } else {
-            v->val._v.child = _this->copy(op);
-        }
+        v->val._v.child = _this->copy(op);
         v->val._v.count = 1 + op2->val._v.count;
         auto i = op2->val._v.child;
         auto local = _this->copy(i);
@@ -478,10 +484,11 @@ namespace clib {
         return (cval **)((char *)val + sizeof(cval));
     }
 
-    cval *builtins::call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env) {
+    cval *builtins::call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env, cval *env2) {
         auto _this = vm;
         if (val->val._v.count != param->val._v.count + 1)
             _this->error("lambda need valid argument size");
+        env->val._env.parent = env2;
         auto op = VM_OP(val);
         auto _param = param->val._v.child;
         auto _argument = op;
@@ -496,7 +503,11 @@ namespace clib {
             _argument = _argument->next;
         }
         _this->mem.pop_root();
-        return _this->eval(body, new_env);
+        assert(body->type == ast_qexpr);
+        body->type = ast_sexpr;
+        auto ret = _this->eval(body, new_env);
+        body->type = ast_qexpr;
+        return ret;
     }
 
     cval *builtins::lt(cval *val, cval *env) {
@@ -525,8 +536,6 @@ namespace clib {
 
     cval *builtins::begin(cval *val, cval *env) {
         auto _this = VM_THIS(val);
-        if (val->val._v.count != 4)
-            _this->error("if requires 3 args");
         auto op = VM_OP(val);
         while (op->next) {
             op = op->next;
@@ -564,6 +573,49 @@ namespace clib {
             _this->error("len requires Q-exp");
         auto v = _this->val_obj(ast_int);
         v->val._int = (int) op->val._v.count;
+        return v;
+    }
+
+    cval *builtins::append(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            _this->error("append need Q-exp for first argument");
+        if (val->val._v.count == 2) {
+            return _this->copy(op);
+        }
+        auto v = _this->copy(op);
+        _this->mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for append\n", v, cast::ast_str(v->type).c_str());
+#endif
+        auto i = op->next;
+        auto local = v->val._v.child;
+        while (local->next) {
+            local = local->next;
+        }
+        while (i) {
+            if (i->type == ast_qexpr) {
+                if (i->val._v.count > 0) {
+                    auto j = i->val._v.child;
+                    while (j) {
+                        local->next = _this->copy(j);
+                        local = local->next;
+                        j = j->next;
+                        v->val._v.count++;
+                    }
+                    i = i->next;
+                } else {
+                    i = i->next;
+                }
+            } else {
+                local->next = _this->copy(i);
+                local = local->next;
+                i = i->next;
+                v->val._v.count++;
+            }
+        }
+        _this->mem.pop_root();
         return v;
     }
 

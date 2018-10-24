@@ -25,7 +25,7 @@ namespace clib {
 
         static cval *def(cval *val, cval *env);
         static cval *lambda(cval *val, cval *env);
-        static cval *call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env);
+        static cval *call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env, cval *env2);
 
         static cval *lt(cval *val, cval *env);
         static cval *le(cval *val, cval *env);
@@ -38,6 +38,7 @@ namespace clib {
         static cval *_if(cval *val, cval *env);
 
         static cval *len(cval *val, cval *env);
+        static cval *append(cval *val, cval *env);
 
         static cval *is_null(cval *val, cval *env);
     };

@@ -63,16 +63,16 @@ int main(int argc, char *argv[]) {
             TEST(R"(def `riff-shuffle (\ `(deck) `(begin
                  (def `take (\ `(n seq) `(if (<= n 0) `nil `(cons (car seq) (take (- n 1) (cdr seq))))))
                  (def `drop (\ `(n seq) `(if (<= n 0) `seq `(drop (- n 1) (cdr seq)))))
-                 (def `mid (\ `(seq) `(/ (length seq) 2)))
+                 (def `mid (\ `(seq) `(/ (len seq) 2)))
                  ((combine append) (take (mid deck) deck) (drop (mid deck) deck)))))",
                  R"(<lambda `deck `(begin)"
                  R"( (def `take (\ `(n seq) `(if (<= n 0) `nil `(cons (car seq) (take (- n 1) (cdr seq)))))))"
                  R"( (def `drop (\ `(n seq) `(if (<= n 0) `seq `(drop (- n 1) (cdr seq))))))"
-                 R"( (def `mid (\ `seq `(/ (length seq) 2))))"
+                 R"( (def `mid (\ `seq `(/ (len seq) 2))))"
                  R"( ((combine append) (take (mid deck) deck) (drop (mid deck) deck)))>)"),
-            TEST(R"(riff-shuffle (list 1 2 3 4 5 6 7 8))", "(1 5 2 6 3 7 4 8)"),
-            TEST(R"((repeat riff-shuffle) (list 1 2 3 4 5 6 7 8))",  "(1 3 5 7 2 4 6 8)"),
-            TEST(R"(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", "(1 2 3 4 5 6 7 8)"),
+            TEST(R"(riff-shuffle (list 1 2 3 4 5 6 7 8))", "`(1 5 2 6 3 7 4 8)"),
+            TEST(R"((repeat riff-shuffle) (list 1 2 3 4 5 6 7 8))",  "`(1 3 5 7 2 4 6 8)"),
+            TEST(R"(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", "`(1 2 3 4 5 6 7 8)"),
     };
     auto i = 0;
     auto failed = 0;

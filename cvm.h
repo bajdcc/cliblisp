@@ -88,7 +88,7 @@ namespace clib {
         cval *calc_op(int op, cval *val, cval *env);
         cval *calc_symbol(const char *sym, cval *env);
         cval *calc_sub(const char *sub, cval *val, cval *env);
-        cval *calc_lambda(cval *param, cval *body, cval *val, cval *env);
+        cval *calc_lambda(cval *param, cval *body, cval *val, cval *env, cval *env2);
         cval *eval(cval *val, cval *env);
         cval *val_obj(ast_t type);
         cval *val_str(ast_t type, const char *str);
