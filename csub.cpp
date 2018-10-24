@@ -488,7 +488,8 @@ namespace clib {
         auto _this = vm;
         if (val->val._v.count != param->val._v.count + 1)
             _this->error("lambda need valid argument size");
-        env->val._env.parent = env2;
+        if (env != env2)
+            env->val._env.parent = env2;
         auto op = VM_OP(val);
         auto _param = param->val._v.child;
         auto _argument = op;
