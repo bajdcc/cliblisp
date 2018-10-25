@@ -73,6 +73,16 @@ int main(int argc, char *argv[]) {
             TEST(R"(riff-shuffle (list 1 2 3 4 5 6 7 8))", "`(1 5 2 6 3 7 4 8)"),
             TEST(R"((repeat riff-shuffle) (list 1 2 3 4 5 6 7 8))",  "`(1 3 5 7 2 4 6 8)"),
             TEST(R"(riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))", "`(1 2 3 4 5 6 7 8)"),
+            TEST(R"(def `apply (\ `(item L) `(eval (cons item L))))", "<lambda `(item L) `(eval (cons item L))>"),
+            TEST(R"(apply + `(1 2 3))", "6"),
+            TEST(R"(def `sum (\ `n `(if (< n 2) `1 `(+ n (sum (- n 1))))))",
+                 "<lambda `n `(if (< n 2) `1 `(+ n (sum (- n 1))))>"),
+            TEST(R"(sum 10)", "55"),
+            TEST(R"(def `Y (\ `f `((\ `self `(f (\ `x `((self self) x)))) (\ `self `(f (\ `x `((self self) x)))))))",
+                 R"(<lambda `f `((\ `self `(f (\ `x `((self self) x)))) (\ `self `(f (\ `x `((self self) x)))))>)"),
+            TEST(R"(def `Y_fib (\ `f `(\ `n `(if (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))))",
+                 R"(<lambda `f `(\ `n `(if (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))>)"),
+            TEST(R"((Y Y_fib) 5)", "5"),
     };
     auto i = 0;
     auto failed = 0;

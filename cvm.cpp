@@ -85,7 +85,7 @@ namespace clib {
         v->val._lambda.param = copy(param);
         v->val._lambda.body = copy(body);
         if (env == global_env) {
-            *lambda_env(v) = env;
+            *lambda_env(v) = new_env(env);
         } else {
             auto _env = *lambda_env(v) = new_env(env->val._env.parent);
             mem.push_root(_env);

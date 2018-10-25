@@ -6,7 +6,7 @@
 
 事实证明CMiniLang的框架还是非常经典耐用的（再次强调）。
 
-本说明完善中。
+本说明完善中，**末尾有测试用例**。
 
 ## 功能
 
@@ -15,6 +15,8 @@
 **运行时所有对象采用标识回收GC，采用不可变值，传递拷贝。**
 
 已实现：引用，变量，函数，四则，比较，递归，闭包，if，测试用例。
+
+已实现**Y-combinator**，见测试用例#47-#49，由于递归运算会大量消耗内存，因此必要时需更改cvm.h中的**VM_MEM**宏的值为更大值。
 
 - [x] 词法分析
 - [x] 语法分析
@@ -244,8 +246,24 @@ deck)))>
 TEST #40> [PASSED] (riff-shuffle (list 1 2 3 4 5 6 7 8))  =>  `(1 5 2 6 3 7 4 8)
 TEST #41> [PASSED] ((repeat riff-shuffle) (list 1 2 3 4 5 6 7 8))  =>  `(1 3 5 7 2 4 6 8)
 TEST #42> [PASSED] (riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7 8))))  =>  `(1 2 3 4 5 6 7 8)
-==== ALL TEST PASSED [41/42] ====
+TEST #43> [PASSED] (def `apply (\ `(item L) `(eval (cons item L))))  =>  <lambda `(item L) `(eval (cons item L))>
+TEST #44> [PASSED] (apply + `(1 2 3))  =>  6
+TEST #45> [PASSED] (def `sum (\ `n `(if (< n 2) `1 `(+ n (sum (- n 1))))))  =>  <lambda `n `(if (< n 2) `1 `(+ n (sum (-
+ n 1))))>
+TEST #46> [PASSED] (sum 10)  =>  55
+TEST #47> [PASSED] (def `Y (\ `f `((\ `self `(f (\ `x `((self self) x)))) (\ `self `(f (\ `x `((self self) x)))))))  =>
+ <lambda `f `((\ `self `(f (\ `x `((self self) x)))) (\ `self `(f (\ `x `((self self) x)))))>
+TEST #48> [PASSED] (def `Y_fib (\ `f `(\ `n `(if (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))))  =>  <lambda `f `(\ `n `(i
+f (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))>
+TEST #49> [PASSED] ((Y Y_fib) 5)  =>  5
+==== ALL TEST PASSED [48/49] ====
 ```
+
+## 目标
+
+1. [ ] 对内存使用进行优化，减少不必要的拷贝操作。
+2. [ ] 添加更多测试用例，确保GC工作的可靠性，避免循环引用与僵尸引用。
+3. [ ] 用LISP语言实现高阶函数。
 
 ## 改进
 
@@ -258,7 +276,8 @@ TEST #42> [PASSED] (riff-shuffle (riff-shuffle (riff-shuffle (list 1 2 3 4 5 6 7
 7. [x] ~~解决了数字溢出的问题~~
 8. [x] ~~解决函数闭包问题~~
 9. [x] ~~改进cons的实现~~
-10. [ ] 当使用函数不存在时发生崩溃
+10. [x] ~~当使用函数不存在时发生崩溃，原因为内存池容量不够~~
+11. [x] ~~调用递归时，环境变量env被free的问题，已修正~~
 
 ## 参考
 

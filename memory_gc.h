@@ -69,6 +69,7 @@ namespace clib {
 
         void *alloc(size_t size) {
             auto new_node = static_cast<gc_header *>((void *) memory.template alloc_array<char>(GC_HEADER_SIZE + size));
+            assert(new_node);
             memset(new_node, 0, GC_HEADER_SIZE + size);
             auto &top = stack_roots.back();
             if (top->child) {
