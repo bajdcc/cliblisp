@@ -32,7 +32,8 @@
 - [x] Subroutine和Symbol
 - [x] nil
 - [x] 常用内建函数
-- [ ] 输入输出
+- [ ] 输入
+- [x] 输出
 - [x] 字符串处理
 - [x] 识别变量，设置变量
 - [x] 识别函数Lambda
@@ -256,7 +257,11 @@ TEST #47> [PASSED] (def `Y (\ `f `((\ `self `(f (\ `x `((self self) x)))) (\ `se
 TEST #48> [PASSED] (def `Y_fib (\ `f `(\ `n `(if (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))))  =>  <lambda `f `(\ `n `(i
 f (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))>
 TEST #49> [PASSED] ((Y Y_fib) 5)  =>  5
-==== ALL TEST PASSED [48/49] ====
+TEST #50> [PASSED] (def `range (\ `(a b) `(if (== a b) `nil `(cons a (range (+ a 1) b)))))  =>  <lambda `(a b) `(if (==
+a b) `nil `(cons a (range (+ a 1) b)))>
+TEST #51> [PASSED] (range 1 10)  =>  `(1 2 3 4 5 6 7 8 9)
+TEST #52> [PASSED] (apply + (range 1 10))  =>  45
+==== ALL TEST PASSED [51/52] ====
 ```
 
 ## 目标

@@ -27,6 +27,7 @@ namespace clib {
     void cvm::builtin_load() {
         // Load init code
         auto codes = std::vector<std::string>{
+                R"(def `nil `())",
                 R"(def `cadr (\ `x `(car (cdr x))))",
                 R"(def `caar (\ `x `(car (car x))))",
                 R"(def `cdar (\ `x `(cdr (car x))))",
@@ -59,7 +60,6 @@ namespace clib {
         auto &_env = *global_env->val._env.env;
         add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
         add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
-        add_builtin(_env, "nil", val_obj(ast_qexpr));
         add_builtin(_env, "+", val_sub("+", builtins::add));
         add_builtin(_env, "-", val_sub("-", builtins::sub));
         add_builtin(_env, "*", val_sub("*", builtins::mul));
@@ -81,9 +81,12 @@ namespace clib {
         ADD_BUILTIN(cdr);
         ADD_BUILTIN(cons);
         ADD_BUILTIN(def);
-        ADD_BUILTIN(len);
-        ADD_BUILTIN(append);
         ADD_BUILTIN(begin);
+        ADD_BUILTIN(append);
+        ADD_BUILTIN(len);
+        ADD_BUILTIN(type);
+        ADD_BUILTIN(str);
+        ADD_BUILTIN(print);
 #undef ADD_BUILTIN
     }
 
@@ -626,5 +629,55 @@ namespace clib {
             _this->error("null? requires 1 args");
         auto op = VM_OP(val);
         return _this->val_bool(op->type == ast_qexpr && op->val._v.count == 0);
+    }
+
+    cval *builtins::type(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 2)
+            _this->error("type requires 1 args");
+        auto op = VM_OP(val);
+        return _this->val_str(ast_string, cast::ast_str(op->type).c_str());
+    }
+
+    static void stringify(cval *val, std::ostream &os) {
+        if (!val)
+            return;
+        switch (val->type) {
+            case ast_string:
+                os << val->val._string;
+                break;
+            case ast_char:
+                os << val->val._char;
+                break;
+            default:
+                cvm::print(val, os);
+        }
+    }
+
+    cval *builtins::str(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 2)
+            _this->error("str requires 1 args");
+        auto op = VM_OP(val);
+        std::stringstream ss;
+        stringify(op, ss);
+        return _this->val_str(ast_string, ss.str().c_str());
+    }
+
+    cval *builtins::print(cval *val, cval *env) {
+        auto _this = VM_THIS(val);
+        if (val->val._v.count != 2)
+            _this->error("str requires 1 args");
+        auto op = VM_OP(val);
+        decltype(op->val._string) s;
+        if (op->type != ast_string) {
+            std::stringstream ss;
+            stringify(op, ss);
+            s = ss.str().c_str();
+        } else {
+            s = op->val._string;
+        }
+        std::cout << s;
+        return VM_NIL(_this);
     }
 }

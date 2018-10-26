@@ -41,6 +41,10 @@ namespace clib {
         static cval *append(cval *val, cval *env);
 
         static cval *is_null(cval *val, cval *env);
+        static cval *type(cval *val, cval *env);
+        static cval *str(cval *val, cval *env);
+
+        static cval *print(cval *val, cval *env);
     };
 }
 

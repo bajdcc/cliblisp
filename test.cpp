@@ -83,6 +83,10 @@ int main(int argc, char *argv[]) {
             TEST(R"(def `Y_fib (\ `f `(\ `n `(if (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))))",
                  R"(<lambda `f `(\ `n `(if (<= n 2) `1 `(+ (f (- n 1)) (f (- n 2)))))>)"),
             TEST(R"((Y Y_fib) 5)", "5"),
+            TEST(R"((def `range (\ `(a b) `(if (== a b) `nil `(cons a (range (+ a 1) b))))))",
+                "<lambda `(a b) `(if (== a b) `nil `(cons a (range (+ a 1) b)))>"),
+            TEST(R"(range 1 10)", "`(1 2 3 4 5 6 7 8 9)"),
+            TEST(R"(apply + (range 1 10))", "45"),
     };
     auto i = 0;
     auto failed = 0;
