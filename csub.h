@@ -6,45 +6,47 @@
 #ifndef CLIBLISP_CSUB_H
 #define CLIBLISP_CSUB_H
 
+#include "cvm.h"
+
 namespace clib {
     struct cval;
     class cvm;
 
     class builtins {
     public:
-        static cval *add(cval *val, cval *env);
-        static cval *sub(cval *val, cval *env);
-        static cval *mul(cval *val, cval *env);
-        static cval *div(cval *val, cval *env);
-        static cval *eval(cval *val, cval *env);
-        static cval *quote(cval *val, cval *env);
-        static cval *list(cval *val, cval *env);
-        static cval *car(cval *val, cval *env);
-        static cval *cdr(cval *val, cval *env);
-        static cval *cons(cval *val, cval *env);
+        static status_t add(cvm *vm, cframe *frame);
+        static status_t sub(cvm *vm, cframe *frame);
+        static status_t mul(cvm *vm, cframe *frame);
+        static status_t div(cvm *vm, cframe *frame);
+        static status_t quote(cvm *vm, cframe *frame);
+        static status_t list(cvm *vm, cframe *frame);
+        static status_t car(cvm *vm, cframe *frame);
+        static status_t cdr(cvm *vm, cframe *frame);
+        static status_t cons(cvm *vm, cframe *frame);
 
-        static cval *def(cval *val, cval *env);
-        static cval *lambda(cval *val, cval *env);
-        static cval *call_lambda(cvm *vm, cval *param, cval *body, cval *val, cval *env, cval *env2);
+        static status_t def(cvm *vm, cframe *frame);
+        static status_t lambda(cvm *vm, cframe *frame);
+        static status_t call_lambda(cvm *vm, cframe *frame);
+        static status_t call_eval(cvm *vm, cframe *frame);
 
-        static cval *lt(cval *val, cval *env);
-        static cval *le(cval *val, cval *env);
-        static cval *gt(cval *val, cval *env);
-        static cval *ge(cval *val, cval *env);
-        static cval *eq(cval *val, cval *env);
-        static cval *ne(cval *val, cval *env);
+        static status_t lt(cvm *vm, cframe *frame);
+        static status_t le(cvm *vm, cframe *frame);
+        static status_t gt(cvm *vm, cframe *frame);
+        static status_t ge(cvm *vm, cframe *frame);
+        static status_t eq(cvm *vm, cframe *frame);
+        static status_t ne(cvm *vm, cframe *frame);
 
-        static cval *begin(cval *val, cval *env);
-        static cval *_if(cval *val, cval *env);
+        static status_t begin(cvm *vm, cframe *frame);
+        static status_t _if(cvm *vm, cframe *frame);
 
-        static cval *len(cval *val, cval *env);
-        static cval *append(cval *val, cval *env);
+        static status_t len(cvm *vm, cframe *frame);
+        static status_t append(cvm *vm, cframe *frame);
 
-        static cval *is_null(cval *val, cval *env);
-        static cval *type(cval *val, cval *env);
-        static cval *str(cval *val, cval *env);
+        static status_t is_null(cvm *vm, cframe *frame);
+        static status_t type(cvm *vm, cframe *frame);
+        static status_t str(cvm *vm, cframe *frame);
 
-        static cval *print(cval *val, cval *env);
+        static status_t print(cvm *vm, cframe *frame);
     };
 }
 

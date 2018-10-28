@@ -222,10 +222,36 @@ namespace clib {
         return nullptr;
     }
 
+    status_t cvm::call(csub fun, cval *val, cval *env, cval **ret) {
+        auto frame = eval_mem.alloc<cframe>();
+        memset(frame, 0, sizeof(cframe));
+        frame->fun = fun;
+        frame->val = val;
+        frame->env = env;
+        frame->ret = ret;
+        eval_stack.push_back(frame);
+        return s_call;
+    }
+
     cval *cvm::run(ast_node *root) {
         mem.save_stack();
         auto val = conv(root, global_env); // 将AST转换为cval树
-        return eval(val, global_env);
+        cval *ret = nullptr;
+        call(eval, val, global_env, &ret);
+        // 自己实现调用栈
+        while (!eval_stack.empty()) {
+            auto frame = eval_stack.back();
+            auto r = frame->fun(this, frame);
+            if (r == s_ret) {
+                eval_mem.free(frame);
+                eval_stack.pop_back();
+            }
+        }
+        assert(ret);
+        eval_stack.clear();
+        eval_mem.clear();
+        eval_tmp.clear();
+        return ret;
     }
 
     void cvm::error(const string_t &info) {
@@ -414,94 +440,6 @@ namespace clib {
         return nullptr;
     }
 
-    cval *cvm::calc_lambda(cval *param, cval *body, cval *val, cval *env, cval *env2) {
-        return builtins::call_lambda(this, param, body, val, env, env2);
-    }
-
-    cval *cvm::eval(cval *val, cval *env) {
-        if (!val)
-            return nullptr;
-        switch (val->type) {
-            case ast_sexpr: {
-                if (val->val._v.child) {
-                    auto op = val->val._v.child;
-                    if (val->val._v.count == 1)
-                        return eval(op, env);
-                    switch (op->type) {
-                        case ast_sub: {
-                            auto sub = op->val._sub.sub;
-                            return sub(val, env);
-                        }
-                        case ast_lambda: {
-                            auto param = op->val._lambda.param;
-                            auto body = op->val._lambda.body;
-                            // 这里需要从lambda对象中取出上下文（闭包）
-                            return calc_lambda(param, body, val, *lambda_env(op), env);
-                        }
-                        case ast_literal: {
-                            auto v = val_obj(val->type);
-                            mem.push_root(v);
-#if SHOW_ALLOCATE_NODE
-                            printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, count: %lu\n", v, cast::ast_str(val->type).c_str(),
-                                   children_size(val));
-#endif
-                            v->val._v.child = nullptr;
-                            auto i = op;
-                            auto local = eval(i, env);
-                            auto quote = false;
-                            if (local->type == ast_sub) {
-                                if (strstr(sub_name(local), "quote")) {
-                                    quote = true;
-                                }
-                            }
-                            v->val._v.child = local;
-                            v->val._v.count++;
-                            i = i->next;
-                            while (i) {
-                                v->val._v.count++;
-                                local->next = quote ? i : eval(i, env);
-                                local = local->next;
-                                i = i->next;
-                            }
-                            mem.pop_root();
-                            return eval(v, env);
-                        }
-                        case ast_sexpr: {
-                            auto v = val_obj(op->type);
-                            mem.push_root(v);
-#if SHOW_ALLOCATE_NODE
-                            printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s\n", v, cast::ast_str(op->type).c_str());
-#endif
-                            v->val._v.child = nullptr;
-                            auto i = val->val._v.child;
-                            auto local = eval(i, env);
-                            v->val._v.child = local;
-                            v->val._v.count = val->val._v.count;
-                            i = i->next;
-                            while (i) {
-                                local->next = eval(i, env);
-                                local = local->next;
-                                i = i->next;
-                            }
-                            mem.pop_root();
-                            return eval(v, env);
-                        }
-                        default:
-                            break;
-                    }
-                    error("invalid operator type for S-exp");
-                    return nullptr;
-                } else {
-                    return val_obj(ast_qexpr);
-                }
-            }
-            case ast_literal:
-                return calc_symbol(val->val._string, env);
-            default:
-                return val;
-        }
-    }
-
     cval *cvm::new_env(cval *env) {
         auto _env = val_obj(ast_env);
         _env->val._env.env = new cval::cenv_t();
@@ -564,6 +502,9 @@ namespace clib {
 
     void cvm::restore() {
         mem.restore_stack();
+        eval_stack.clear();
+        eval_mem.clear();
+        eval_tmp.clear();
     }
 
     void cvm::dump() {

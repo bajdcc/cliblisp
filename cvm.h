@@ -7,6 +7,8 @@
 #define CLIBLISP_CVM_H
 
 #define VM_MEM (32 * 1024)
+#define VM_EVAL (32 * 1024)
+#define VM_TMP (32 * 1024)
 #define SHOW_ALLOCATE_NODE 0
 
 #include <vector>
@@ -15,9 +17,20 @@
 
 namespace clib {
 
+    class cvm;
+    struct cframe;
+
+    enum status_t {
+        s_ret,
+        s_call,
+        s_error,
+    };
+
+    using ctmp = void *;
+
     struct cval {
         using cenv_t = std::unordered_map<std::string, cval *>;
-        using csub_t = cval *(*)(cval *arg, cval *env);
+        using csub_t = status_t (*)(cvm *vm, cframe *frame);
         ast_t type;
         cval *next;
         union {
@@ -56,6 +69,12 @@ namespace clib {
     using cenv = cval::cenv_t;
     using csub = cval::csub_t;
 
+    struct cframe {
+        csub fun;
+        cval *val, *env, **ret;
+        void *arg;
+    };
+
     class cvm {
     public:
         cvm();
@@ -84,12 +103,17 @@ namespace clib {
         void builtin_load();
         cval *conv(ast_node *node, cval *env);
 
+        status_t call(csub fun, cval *val, cval *env, cval **ret);
+
         int calc(int op, ast_t type, cval *r, cval *v, cval *env);
         cval *calc_op(int op, cval *val, cval *env);
         cval *calc_symbol(const char *sym, cval *env);
         cval *calc_sub(const char *sub, cval *val, cval *env);
-        cval *calc_lambda(cval *param, cval *body, cval *val, cval *env, cval *env2);
-        cval *eval(cval *val, cval *env);
+
+        static status_t eval(cvm *vm, cframe *frame);
+        static status_t eval_one(cvm *vm, cframe *frame);
+        static status_t eval_child(cvm *vm, cframe *frame);
+
         cval *val_obj(ast_t type);
         cval *val_str(ast_t type, const char *str);
         cval *val_sub(const char *name, csub sub);
@@ -107,6 +131,9 @@ namespace clib {
     private:
         cval *global_env{nullptr};
         memory_pool_gc<VM_MEM> mem;
+        std::vector<cframe *> eval_stack;
+        memory_pool<VM_EVAL> eval_mem;
+        memory_pool<VM_TMP> eval_tmp;
     };
 }
 
