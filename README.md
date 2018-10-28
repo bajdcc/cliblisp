@@ -8,6 +8,15 @@
 
 本说明完善中，**末尾有测试用例**。
 
+## 文章
+
+- [【Lisp系列】开篇](http://zhuanlan.zhihu.com/p/45897626)
+- [【Lisp系列】实现四则运算](http://zhuanlan.zhihu.com/p/46723048)
+- [【Lisp系列】实现GC](http://zhuanlan.zhihu.com/p/46993463)
+- [【Lisp系列】实现Lambda](http://zhuanlan.zhihu.com/p/47309037)
+- [【Lisp系列】大功告成](http://zhuanlan.zhihu.com/p/47569910)
+- [【Lisp系列】手动递归](http://zhuanlan.zhihu.com/p/47869195)
+
 ## 功能
 
 当前完成了四则运算和常用函数，采用解释器求值。

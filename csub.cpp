@@ -727,10 +727,6 @@ namespace clib {
         if (val->val._v.count != 4)
             vm->error("if requires 3 args");
         auto op = VM_OP(val);
-        struct tmp_bag {
-            bool qexp;
-            cval *ret;
-        };
         if (frame->arg == nullptr) {
             auto flag = true;
             if (op->type == ast_int && op->val._int == 0)
