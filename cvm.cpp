@@ -109,13 +109,13 @@ namespace clib {
         return val->val._v.count;
     }
 
-    cval *cvm::run_rec(ast_node *node, cval *env, bool quote) {
+    cval *cvm::conv(ast_node *node, cval *env) {
         if (node == nullptr)
             return nullptr;
         auto type = (ast_t) node->flag;
         switch (type) {
             case ast_root: // 根结点，全局声明
-                return run_rec(node->child, env, quote);
+                return conv(node->child, env);
             case ast_sexpr:
                 if (!node->child)
                     error("S-exp: missing value");
@@ -128,23 +128,18 @@ namespace clib {
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
-                    auto local = run_rec(i, env, quote);
+                    auto local = conv(i, env);
                     v->val._v.child = local;
-                    v->val._v.count++;
+                    v->val._v.count = 1;
                     i = i->next;
-                    if (local->type == ast_sub) {
-                        if (strstr(sub_name(local),  "quote")) {
-                            quote = true;
-                        }
-                    }
                     while (i != node->child) {
                         v->val._v.count++;
-                        local->next = run_rec(i, env, quote);
+                        local->next = conv(i, env);
                         local = local->next;
                         i = i->next;
                     }
                     mem.pop_root();
-                    return quote ? v : eval(v, env);
+                    return v;
                 } else {
                     error("S-exp: missing literal");
                 }
@@ -164,13 +159,13 @@ namespace clib {
 #endif
                     v->val._v.child = nullptr;
                     auto i = node->child;
-                    auto local = run_rec(i, env, true);
+                    auto local = conv(i, env);
                     v->val._v.child = local;
-                    v->val._v.count++;
+                    v->val._v.count = 1;
                     i = i->next;
                     while (i != node->child) {
                         v->val._v.count++;
-                        local->next = run_rec(i, env, true);
+                        local->next = conv(i, env);
                         local = local->next;
                         i = i->next;
                     }
@@ -191,7 +186,7 @@ namespace clib {
                 printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, val: %s\n", v, cast::ast_str(type).c_str(),
                        v->val._string);
 #endif
-                return quote ? v : eval(v, env);
+                return v;
             }
 #if SHOW_ALLOCATE_NODE
 #define DEFINE_VAL(t) \
@@ -229,7 +224,7 @@ namespace clib {
 
     cval *cvm::run(ast_node *root) {
         mem.save_stack();
-        auto val = run_rec(root, global_env, false);
+        auto val = conv(root, global_env); // 将AST转换为cval树
         return eval(val, global_env);
     }
 
@@ -464,12 +459,12 @@ namespace clib {
                             i = i->next;
                             while (i) {
                                 v->val._v.count++;
-                                local->next = eval(i, env);
+                                local->next = quote ? i : eval(i, env);
                                 local = local->next;
                                 i = i->next;
                             }
                             mem.pop_root();
-                            return quote ? v : eval(v, env);
+                            return eval(v, env);
                         }
                         case ast_sexpr: {
                             auto v = val_obj(op->type);
@@ -483,19 +478,13 @@ namespace clib {
                             v->val._v.child = local;
                             v->val._v.count = val->val._v.count;
                             i = i->next;
-                            auto quote = false;
-                            if (local->type == ast_sub) {
-                                if (strstr(sub_name(local), "quote")) {
-                                    quote = true;
-                                }
-                            }
                             while (i) {
                                 local->next = eval(i, env);
                                 local = local->next;
                                 i = i->next;
                             }
                             mem.pop_root();
-                            return quote ? v : eval(v, env);
+                            return eval(v, env);
                         }
                         default:
                             break;
