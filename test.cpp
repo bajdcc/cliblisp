@@ -87,6 +87,9 @@ int main(int argc, char *argv[]) {
                 "<lambda `(a b) `(if (== a b) `nil `(cons a (range (+ a 1) b)))>"),
             TEST(R"(range 1 10)", "`(1 2 3 4 5 6 7 8 9)"),
             TEST(R"(apply + (range 1 10))", "45"),
+            TEST(R"(def `map (\ `(f L) `(if (null? L) `nil `(cons (f (car L)) (map f (cdr L))))))",
+                    "<lambda `(f L) `(if (null? L) `nil `(cons (f (car L)) (map f (cdr L))))>"),
+            TEST(R"(map + (range 1 10))", "`(2 3 4 5 6 7 8 9 10)"),
     };
     auto i = 0;
     auto failed = 0;
