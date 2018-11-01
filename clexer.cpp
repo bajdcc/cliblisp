@@ -433,7 +433,10 @@ LEX_T(t) clexer::get_store_##t(int index) const \
         }
         if ((_postfix = digit_type(_type, i)) != l_error) { // 判断有无后缀
             move(i - index);
-            return digit_from_integer(_postfix, n) ? _postfix : _type;
+            if (_type == l_int)
+                return digit_from_integer(_postfix, n) ? _postfix : _type;
+            else
+                return digit_from_double(_postfix, d) ? _postfix : _type;
         }
         if (str[i] == '.') { // 解析小数部分
             sint l = ++i;

@@ -33,23 +33,18 @@ namespace clib {
     using uint64 = unsigned __int64;
 #endif
 
-    // 这里暂不支持64位程序
-#if __x86_64__
-#warning "Not support x86_64"
-#endif
-#if 1
-    using sint = int32;
-    using uint = uint32;
+#if !__x86_64__
+    using sint = int;
+    using uint = unsigned int;
     using slong = long long;
     using ulong = unsigned long long;
 #else
-    using sint = int64;
-    using uint = uint64;
+    using sint = int;
+    using uint = unsigned int;
     using slong = long;
     using ulong = unsigned long;
 #endif
     using byte = uint8;
-    using size_t = uint;
 
     enum lexer_t {
         l_none,
