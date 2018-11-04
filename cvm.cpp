@@ -440,7 +440,7 @@ namespace clib {
         return nullptr;
     }
 
-    cval *cvm::def(cval *&env, const char *sym, cval *val) {
+    cval *cvm::def(cval *env, const char *sym, cval *val) {
         auto e = env;
         while (env) {
             auto &_env = *env->val._env.env;
