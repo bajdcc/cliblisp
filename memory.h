@@ -177,8 +177,6 @@ namespace clib {
             size = block_align(size);
             if (size >= block_available_size)
                 return nullptr;
-            if (block_current == block_head)
-                return alloc_free_block(size);
             auto blk = block_current;
             do {
                 if (block_get_flag(blk, BLOCK_USING) == 0 && blk->size >= size) {
