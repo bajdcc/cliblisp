@@ -179,7 +179,7 @@ namespace clib {
                 return nullptr;
             auto blk = block_current;
             do {
-                if (block_get_flag(blk, BLOCK_USING) == 0 && blk->size >= size) {
+                if (block_get_flag(blk, BLOCK_USING) == 0 && blk->size >= size + 1) {
                     block_current = blk;
                     return alloc_free_block(size);
                 }
@@ -190,7 +190,7 @@ namespace clib {
 
         // 查找空闲块
         void *alloc_free_block(size_t size) {
-            if (block_current->size == size) // 申请的大小正好是空闲块大小
+            if (block_current->size == size + 1) // 申请的大小正好是空闲块大小
             {
                 return alloc_cur_block(size + 1);
             }
