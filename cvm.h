@@ -108,6 +108,7 @@ namespace clib {
         int calc(int op, ast_t type, cval *r, cval *v, cval *env);
         cval *calc_op(int op, cval *val, cval *env);
         cval *calc_symbol(const char *sym, cval *env);
+        cval *def(cval *&env, const char *sym, cval *val);
         cval *calc_sub(const char *sub, cval *val, cval *env);
 
         static status_t eval(cvm *vm, cframe *frame);

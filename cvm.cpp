@@ -440,6 +440,28 @@ namespace clib {
         return nullptr;
     }
 
+    cval *cvm::def(cval *&env, const char *sym, cval *val) {
+        auto e = env;
+        while (env) {
+            auto &_env = *env->val._env.env;
+            auto f = _env.find(sym);
+            if (f != _env.end()) {
+                mem.push_root(env);
+                auto new_val = copy(val);
+                mem.pop_root();
+                mem.unlink(env, f->second);
+                _env[sym] = new_val;
+                return new_val;
+            }
+            env = env->val._env.parent;
+        }
+        mem.push_root(e);
+        auto new_val = copy(val);
+        mem.pop_root();
+        (*e->val._env.env)[sym] = new_val;
+        return new_val;
+    }
+
     cval *cvm::new_env(cval *env) {
         auto _env = val_obj(ast_env);
         _env->val._env.env = new cval::cenv_t();

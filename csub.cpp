@@ -583,20 +583,18 @@ namespace clib {
             }
             param = op->val._v.child;
             vm->mem.push_root(env);
-            auto &_env = *env->val._env.env;
+            cval *first_def = nullptr;
             for (auto i = 0; i < op->val._v.count; ++i) {
                 auto name = param->val._string;
-                auto old = _env.find(name);
-                if (old != _env.end()) {
-                    vm->mem.unlink(env, old->second);
-                }
-                _env[param->val._string] = vm->copy(argument);
+                auto _def = vm->def(env, name, argument);
+                if (first_def == nullptr)
+                    first_def = _def;
                 param = param->next;
                 argument = argument->next;
             }
             vm->mem.pop_root();
             if (op->val._v.count == 1) {
-                VM_RET(_env[op->val._v.child->val._string]);
+                VM_RET(vm->copy(first_def));
             }
             VM_RET(VM_NIL);
         } else {
