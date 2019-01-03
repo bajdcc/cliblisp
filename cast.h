@@ -6,20 +6,19 @@
 #ifndef CLIBLISP_CAST_H
 #define CLIBLISP_CAST_H
 
+#include "types.h"
 #include "memory.h"
 
-#define AST_NODE_MEM (32 * 1024)
-#define AST_STR_MEM (16 * 1024)
+#define AST_NODE_MEM (8 * 1024)
+#define AST_STR_MEM (8 * 1024)
 
 namespace clib {
 
     enum ast_t {
         ast_root,
-        ast_env,
-        ast_sub,
-        ast_lambda,
-        ast_sexpr,
-        ast_qexpr,
+        ast_collection,
+        ast_keyword,
+        ast_operator,
         ast_literal,
         ast_string,
         ast_char,
@@ -32,6 +31,11 @@ namespace clib {
         ast_ulong,
         ast_float,
         ast_double,
+        ast_env,
+        ast_sub,
+        ast_lambda,
+        ast_sexpr,
+        ast_qexpr,
     };
 
     enum ast_to_t {
@@ -60,6 +64,10 @@ namespace clib {
             DEFINE_NODE_DATA(double)
 #undef DEFINE_NODE_DATA
             const char *_string;
+            const char *_identifier;
+            keyword_t _keyword;
+            operator_t _op;
+            coll_t _coll;
         } data; // 数据
 
         // 树型数据结构，广义表
@@ -83,6 +91,8 @@ namespace clib {
         ast_node *new_child(ast_t type, bool step = true);
         ast_node *new_sibling(ast_t type, bool step = true);
 
+        void remove(ast_node*);
+
         ast_node *add_child(ast_node*);
         static ast_node *set_child(ast_node*, ast_node*);
         static ast_node *set_sibling(ast_node*, ast_node*);
@@ -94,7 +104,12 @@ namespace clib {
         void to(ast_to_t type);
 
         static void print(ast_node *node, int level, std::ostream &os);
+        static void print2(ast_node *node, int level, std::ostream &os);
         static const string_t &ast_str(ast_t type);
+        static bool ast_equal(ast_t type, lexer_t lex);
+        static int ast_prior(ast_t type);
+
+        static void unlink(ast_node *node);
 
         static ast_node *index(ast_node *node, int index);
         static ast_node *index(ast_node *node, const string_t &index);

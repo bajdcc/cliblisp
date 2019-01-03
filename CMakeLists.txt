@@ -13,6 +13,10 @@ add_executable(cliblisp
         clexer.cpp
         cparser.h
         cparser.cpp
+        cunit.h
+        cunit.cpp
+        cexception.h
+        cexception.cpp
         cast.h
         cast.cpp
         cvm.cpp
@@ -30,6 +34,10 @@ add_executable(cliblisp-test
         clexer.cpp
         cparser.h
         cparser.cpp
+        cunit.h
+        cunit.cpp
+        cexception.h
+        cexception.cpp
         cast.h
         cast.cpp
         cvm.cpp

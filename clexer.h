@@ -1,13 +1,14 @@
 //
-// Project: cliblisp
+// Project: CMiniLang
 // Author: bajdcc
 //
-#ifndef CLIBLISP_LEXER_H
-#define CLIBLISP_LEXER_H
 
-#include <array>
-#include <bitset>
+#ifndef CMINILANG_LEXER_H
+#define CMINILANG_LEXER_H
+
 #include <vector>
+#include <bitset>
+#include <array>
 #include "types.h"
 
 namespace clib {
@@ -34,8 +35,10 @@ namespace clib {
         DEFINE_LEXER_GETTER(float)
         DEFINE_LEXER_GETTER(double)
         DEFINE_LEXER_GETTER(operator)
+        DEFINE_LEXER_GETTER(keyword)
         DEFINE_LEXER_GETTER(identifier)
         DEFINE_LEXER_GETTER(string)
+        DEFINE_LEXER_GETTER(comment)
         DEFINE_LEXER_GETTER(space)
         DEFINE_LEXER_GETTER(newline)
         DEFINE_LEXER_GETTER(error)
@@ -94,6 +97,7 @@ namespace clib {
         lexer_t next_space();
         lexer_t next_char();
         lexer_t next_string();
+        lexer_t next_comment();
         lexer_t next_operator();
 
         int local();
@@ -101,6 +105,7 @@ namespace clib {
 
     public:
         bool is_type(lexer_t) const;
+        bool is_keyword(keyword_t) const;
         bool is_operator(operator_t) const;
         bool is_operator(operator_t, operator_t) const;
         bool is_number() const;
@@ -114,13 +119,13 @@ namespace clib {
         string_t str;
         uint index{0};
         uint last_index{0};
-        int length{0};
+        uint length{0};
 
         lexer_t type{l_none};
-        int line{1};
-        int column{1};
-        int last_line{1};
-        int last_column{1};
+        uint line{1};
+        uint column{1};
+        uint last_line{1};
+        uint last_column{1};
 
         struct {
 #define DEFINE_LEXER_GETTER(t) LEX_T(t) _##t;
@@ -135,8 +140,10 @@ namespace clib {
             DEFINE_LEXER_GETTER(float)
             DEFINE_LEXER_GETTER(double)
             DEFINE_LEXER_GETTER(operator)
+            DEFINE_LEXER_GETTER(keyword)
             DEFINE_LEXER_GETTER(identifier)
             DEFINE_LEXER_GETTER(string)
+            DEFINE_LEXER_GETTER(comment)
             DEFINE_LEXER_GETTER(space)
             DEFINE_LEXER_GETTER(newline)
             DEFINE_LEXER_GETTER(error)
@@ -156,18 +163,24 @@ namespace clib {
             DEFINE_LEXER_STORAGE(float)
             DEFINE_LEXER_STORAGE(double)
             DEFINE_LEXER_STORAGE(operator)
+            DEFINE_LEXER_STORAGE(keyword)
             DEFINE_LEXER_STORAGE(identifier)
             DEFINE_LEXER_STORAGE(string)
+            DEFINE_LEXER_STORAGE(comment)
             DEFINE_LEXER_STORAGE(space)
             DEFINE_LEXER_STORAGE(newline)
             DEFINE_LEXER_STORAGE(error)
 #undef DEFINE_LEXER_STORAGE
         } storage;
 
+        // 字典
+        map_t<string_t, keyword_t> mapKeyword;
+        std::bitset<128> bitOp[2];
         std::array<operator_t, 0x100> sinOp;
+        std::bitset<128> bitIdOp;
 
         void initMap();
     };
 }
 
-#endif //CLIBLISP_LEXER_H
+#endif //CMINILANG_LEXER_H

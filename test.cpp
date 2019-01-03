@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
             out.clear();
             clib::cparser p(ast);
             auto root = p.parse();
+            //clib::cast::print(root, 0, std::cout);
             auto val = vm.run(root);
             std::cout << "TEST #" << (++i) << "> ";
             ss.str("");

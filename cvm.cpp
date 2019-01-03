@@ -74,7 +74,7 @@ namespace clib {
     }
 
     static cval **lambda_env(cval *val) {
-        return (cval **)((char *)val + sizeof(cval));
+        return (cval **) ((char *) val + sizeof(cval));
     }
 
     cval *cvm::val_lambda(cval *param, cval *body, cval *env) {
@@ -100,7 +100,7 @@ namespace clib {
     }
 
     static char *sub_name(cval *val) {
-        return (char*)val + sizeof(cval);
+        return (char *) val + sizeof(cval);
     }
 
     uint cvm::children_size(cval *val) {
@@ -150,7 +150,7 @@ namespace clib {
                     v->val._v.count = 0;
                     v->val._v.child = nullptr;
                     return v;
-                } else  {
+                } else {
                     auto v = val_obj(type);
                     mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
@@ -278,14 +278,14 @@ namespace clib {
                 os << "<subroutine \"" << sub_name(val) << "\">";
                 break;
             case ast_sexpr: {
-                    os << '(';
-                    auto head = val->val._v.child;
-                    while (head) {
-                        print(head, os);
-                        head = head->next;
-                    }
-                    os << ')';
+                os << '(';
+                auto head = val->val._v.child;
+                while (head) {
+                    print(head, os);
+                    head = head->next;
                 }
+                os << ')';
+            }
                 break;
             case ast_qexpr:
                 if (val->val._v.count == 0) {

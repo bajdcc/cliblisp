@@ -39,6 +39,8 @@ namespace clib {
                 save();
                 cparser p(code);
                 auto root = p.parse();
+                //clib::cast::print(root, 0, std::cout);
+                //std::cout << std::endl;
                 auto val = run(root);
 #if SHOW_ALLOCATE_NODE
                 std::cout << "builtin> ";

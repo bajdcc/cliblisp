@@ -4,8 +4,6 @@
 //
 
 #include <cstring>
-#include <iostream>
-#include <sstream>
 #include <iomanip>
 #include "cast.h"
 
@@ -66,6 +64,7 @@ namespace clib {
         do {
             n++;
             i = i->next;
+            assert(i);
         } while (i != node);
         return n;
     }
@@ -88,6 +87,35 @@ namespace clib {
         if (step)
             current = node;
         return node;
+    }
+
+    void cast::remove(ast_node *node) {
+        if (node->parent && node->parent->child == node) {
+            if (node->next == node) {
+                node->parent->child = nullptr;
+            } else {
+                node->parent->child = node->next;
+            }
+        }
+        if (node->prev && node->prev != node) {
+            node->prev->next = node->next;
+        }
+        if (node->next && node->next != node) {
+            node->next->prev = node->prev;
+        }
+        if (node->child) {
+            auto f = node->child;
+            auto i = f;
+            i->parent = nullptr;
+            if (i->next != f) {
+                i = i->next;
+                do {
+                    i->parent = nullptr;
+                    i = i->next;
+                } while (i != f);
+            }
+        }
+        nodes.free(node);
     }
 
     void cast::to(ast_to_t type) {
@@ -122,7 +150,9 @@ namespace clib {
     std::string cast::display_str(const char *str) {
         std::stringstream ss;
         for (auto c = str; *c != 0; c++) {
-            if (isprint(*c)) {
+            if (*c < 0) {
+                ss << *c;
+            } else if (isprint(*c)) {
                 ss << *c;
             } else {
                 if (*c == '\n')
@@ -177,7 +207,7 @@ namespace clib {
                 break;
             case ast_qexpr:
                 os << '`';
-                if (node->child == node->child->next) {
+                if (node->child && node->child == node->child->next) {
                     ast_recursion(node->child, level + 1, os, rec);
                 } else {
                     os << '(';
@@ -237,6 +267,74 @@ namespace clib {
         }
     }
 
+    void cast::print2(ast_node *node, int level, std::ostream &os) {
+        if (node == nullptr)
+            return;
+        auto rec = [&](auto n, auto l, auto &os) { cast::print2(n, l, os); };
+        auto type = (ast_t) node->flag;
+        os << std::setfill(' ') << std::setw(level) << "";
+        switch (type) {
+            case ast_root: // 根结点，全局声明
+                ast_recursion(node->child, level, os, rec);
+                break;
+            case ast_collection:
+                os << COLL_STRING(node->data._coll) << std::endl;
+                ast_recursion(node->child, level + 1, os, rec);
+                break;
+            case ast_keyword:
+                os << "keyword: " << KEYWORD_STRING(node->data._keyword) << std::endl;
+                break;
+            case ast_operator:
+                os << "operator: " << OP_STRING(node->data._op) << std::endl;
+                break;
+            case ast_literal:
+                os << "id: " << node->data._string << std::endl;
+                break;
+            case ast_string:
+                os << "string: " << '"' << display_str(node->data._string) << '"' << std::endl;
+                break;
+            case ast_char:
+                os << "char: ";
+                if (isprint(node->data._char))
+                    os << '\'' << node->data._char << '\'';
+                else if (node->data._char == '\n')
+                    os << "'\\n'";
+                else
+                    os << "'\\x" << std::setiosflags(std::ios::uppercase) << std::hex
+                       << std::setfill('0') << std::setw(2)
+                       << (unsigned int) node->data._char << '\'';
+                os << std::endl;
+                break;
+            case ast_uchar:
+                os << "uchar: " << (unsigned int) node->data._uchar << std::endl;
+                break;
+            case ast_short:
+                os << "short: " << node->data._short << std::endl;
+                break;
+            case ast_ushort:
+                os << "ushort: " << node->data._ushort << std::endl;
+                break;
+            case ast_int:
+                os << "int: " << node->data._int << std::endl;
+                break;
+            case ast_uint:
+                os << "uint: " << node->data._uint << std::endl;
+                break;
+            case ast_long:
+                os << "long: " << node->data._long << std::endl;
+                break;
+            case ast_ulong:
+                os << "ulong: " << node->data._ulong << std::endl;
+                break;
+            case ast_float:
+                os << "float: " << node->data._float << std::endl;
+                break;
+            case ast_double:
+                os << "double: " << node->data._double << std::endl;
+                break;
+        }
+    }
+
     ast_node *cast::index(ast_node *node, int index) {
         auto child = node->child;
         if (child) {
@@ -271,28 +369,79 @@ namespace clib {
         return nullptr;
     }
 
-    std::tuple<ast_t, string_t> ast_list[] = {
-        std::make_tuple(ast_root, "root"),
-        std::make_tuple(ast_env, "env"),
-        std::make_tuple(ast_sub, "sub"),
-        std::make_tuple(ast_lambda, "lambda"),
-        std::make_tuple(ast_sexpr, "S-exp"),
-        std::make_tuple(ast_qexpr, "Q-exp"),
-        std::make_tuple(ast_literal, "literal"),
-        std::make_tuple(ast_string, "string"),
-        std::make_tuple(ast_char, "char"),
-        std::make_tuple(ast_uchar, "uchar"),
-        std::make_tuple(ast_short, "short"),
-        std::make_tuple(ast_ushort, "ushort"),
-        std::make_tuple(ast_int, "int"),
-        std::make_tuple(ast_uint, "uint"),
-        std::make_tuple(ast_long, "long"),
-        std::make_tuple(ast_ulong, "ulong"),
-        std::make_tuple(ast_float, "float"),
-        std::make_tuple(ast_double, "double"),
+    std::tuple<ast_t, string_t, lexer_t, int> ast_list[] = {
+            std::make_tuple(ast_root, "root", l_none, 0),
+            std::make_tuple(ast_collection, "coll", l_none, 0),
+            std::make_tuple(ast_keyword, "keyword", l_none, 0),
+            std::make_tuple(ast_operator, "operator", l_operator , 0),
+            std::make_tuple(ast_literal, "literal", l_identifier, 0),
+            std::make_tuple(ast_string, "string", l_string, 0),
+            std::make_tuple(ast_char, "char", l_char, 1),
+            std::make_tuple(ast_uchar, "uchar", l_uchar, 2),
+            std::make_tuple(ast_short, "short", l_short, 3),
+            std::make_tuple(ast_ushort, "ushort", l_ushort, 4),
+            std::make_tuple(ast_int, "int", l_int, 5),
+            std::make_tuple(ast_uint, "uint", l_uint, 6),
+            std::make_tuple(ast_long, "long", l_long, 7),
+            std::make_tuple(ast_ulong, "ulong", l_ulong, 8),
+            std::make_tuple(ast_float, "float", l_float, 9),
+            std::make_tuple(ast_double, "double", l_double, 10),
+            std::make_tuple(ast_env, "env", l_none, 0),
+            std::make_tuple(ast_sub, "sub", l_none, 0),
+            std::make_tuple(ast_lambda, "lambda", l_none, 0),
+            std::make_tuple(ast_sexpr, "sexpr", l_none, 0),
+            std::make_tuple(ast_qexpr, "qexpr", l_none, 0),
     };
 
     const string_t &cast::ast_str(ast_t type) {
         return std::get<1>(ast_list[type]);
+    }
+
+    bool cast::ast_equal(ast_t type, lexer_t lex) {
+        return std::get<2>(ast_list[type]) == lex;
+    }
+
+    int cast::ast_prior(ast_t type) {
+        return std::get<3>(ast_list[type]);
+    }
+
+    void cast::unlink(ast_node *node) {
+        if (node->parent) {
+            auto &parent = node->parent;
+            auto &ptr = node;
+            auto i = parent->child;
+            if (i->next == i) {
+                assert(i->prev == i);
+                assert(parent->child == node);
+                parent->child = nullptr;
+                node->parent = nullptr;
+                node->prev = node->next = node;
+                return;
+            }
+            if (ptr == parent->child) {
+                parent->child = i->next;
+                i->prev->next = parent->child;
+                parent->child->prev = i->prev;
+                node->parent = nullptr;
+                node->prev = node->next = node;
+                return;
+            }
+            do {
+                if (i->next == ptr) {
+                    if (i->next->next == parent->child) {
+                        i->next = parent->child;
+                        parent->child->prev = i;
+                    } else {
+                        i->next->next->prev = i;
+                        i->next = i->next->next;
+                    }
+                    break;
+                } else {
+                    i = i->next;
+                }
+            } while (i != parent->child);
+            node->parent = nullptr;
+            node->prev = node->next = node;
+        }
     }
 }
