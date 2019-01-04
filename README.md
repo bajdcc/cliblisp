@@ -331,6 +331,7 @@ TEST #52> [PASSED] (apply + (range 1 10))  =>  45
     - [x] 使用[C语言文法](https://github.com/antlr/grammars-v4/blob/master/c/C.g4)
     - [x] 实现回溯，解决移进/归约冲突问题，解决回溯的诸多BUG
 - [ ] LISP虚拟机
+    - [x] 创建窗口
     - [ ] 更多内置指令
     - [ ] 控制台交互
     - [ ] 图形交互
