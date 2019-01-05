@@ -8,6 +8,7 @@
 #include <chrono>
 #include "cparser.h"
 #include "cvm.h"
+#include "cgui.h"
 
 #define FPS 30
 #define FRAME_SPAN (1.0 / FPS)
@@ -17,6 +18,7 @@ static clib::decimal dt;
 static clib::decimal dt_inv;
 static bool paused;
 static string_t title;
+clib::cgui gui;
 
 /**
  * 绘制文字
@@ -46,7 +48,7 @@ static void draw_text(int x, int y, const char *format, ...) {
     int len = vsprintf(buffer, format, args); // 格式化字符串
     va_end(args);
     for (int i = 0; i < len; ++i) {
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, buffer[i]); // 第一个参数为字体，第二个参数为字符
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, buffer[i]); // 第一个参数为字体，第二个参数为字符
     }
 
     glPopMatrix();
@@ -59,6 +61,8 @@ void display() {
 
     int h = glutGet(GLUT_WINDOW_HEIGHT); // 窗口的高
     int w = glutGet(GLUT_WINDOW_WIDTH); // 窗口的宽
+
+    gui.draw();
 
     // 绘制文字
     draw_text(10, 20, "cliblisp @bajdcc"); // 暂不支持中文

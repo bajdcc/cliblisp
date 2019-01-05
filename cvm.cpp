@@ -233,21 +233,33 @@ namespace clib {
         return s_call;
     }
 
-    cval *cvm::run(ast_node *root) {
-        mem.save_stack();
-        auto val = conv(root, global_env); // 将AST转换为cval树
-        cval *ret = nullptr;
-        call(eval, val, global_env, &ret);
+    void cvm::prepare(ast_node *node) {
+        if (!root) {
+            mem.save_stack();
+            root = conv(node, global_env);
+            ret = nullptr;
+            call(eval, root, global_env, &ret);
+        }
+    }
+
+    cval *cvm::run(int cycle, int &cycles) {
         // 自己实现调用栈
-        while (!eval_stack.empty()) {
+        for (auto i = 0; !eval_stack.empty() && i < cycle; i++) {
+            cycles++;
             auto frame = eval_stack.back();
             auto r = frame->fun(this, frame);
             if (r == s_ret) {
                 eval_mem.free(frame);
                 eval_stack.pop_back();
             }
+            if (r == s_sleep) {
+                return nullptr;
+            }
         }
+        if (ret == nullptr)
+            return nullptr;
         assert(ret);
+        root = nullptr;
         eval_stack.clear();
         eval_mem.clear();
         eval_tmp.clear();
@@ -523,6 +535,7 @@ namespace clib {
     }
 
     void cvm::restore() {
+        root = nullptr;
         mem.restore_stack();
         eval_stack.clear();
         eval_mem.clear();
@@ -533,5 +546,14 @@ namespace clib {
 #if SHOW_ALLOCATE_NODE
         mem.dump(std::cout);
 #endif
+    }
+
+    void cvm::reset() {
+        global_env = nullptr;
+        mem.clear();
+        eval_stack.clear();
+        eval_mem.clear();
+        eval_tmp.clear();
+        builtin();
     }
 }

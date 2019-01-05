@@ -149,6 +149,18 @@ namespace clib {
             dump_tree();
         }
 
+        void clear() {
+            for (auto &obj : objects) {
+                gc_callback(data(obj));
+            }
+            objects.clear();
+            stack_roots.clear();
+            stack_roots.push_back(&stack_head);
+            memory.clear();
+            saved_stack = 0;
+            stack_head = {nullptr, nullptr, nullptr};
+        }
+
     private:
         void mark_children(gc_header *ptr) {
             if (ptr->child) {

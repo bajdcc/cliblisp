@@ -24,7 +24,7 @@ add_executable(cliblisp
         cvm.cpp
         cvm.h
         csub.cpp
-        csub.h)
+        csub.h cgui.cpp cgui.h)
 
 add_executable(cliblisp-test
         test.cpp

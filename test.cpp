@@ -95,15 +95,17 @@ int main(int argc, char *argv[]) {
     auto failed = 0;
     std::stringstream ss;
     std::string ast, out;
+    int c;
     for (auto &code : codes) {
         vm.save();
         try {
             ast = std::get<0>(code);
             out.clear();
-            clib::cparser p(ast);
-            auto root = p.parse();
+            clib::cparser p;
+            auto root = p.parse(ast);
             //clib::cast::print(root, 0, std::cout);
-            auto val = vm.run(root);
+            vm.prepare(root);
+            auto val = vm.run(INT32_MAX, c);
             std::cout << "TEST #" << (++i) << "> ";
             ss.str("");
             clib::cast::print(root, 0, ss);

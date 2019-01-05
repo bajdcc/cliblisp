@@ -19,16 +19,15 @@
 
 namespace clib {
 
-    cparser::cparser(const string_t &str)
-        : lexer(str.empty() ? str : (str[0] == '`' ? str : ("(" + str + ")"))) {}
-
-    ast_node *cparser::parse() {
+    ast_node *cparser::parse(const string_t &str) {
+        lexer = std::make_unique<clexer>(str.empty() ? str : (str[0] == '`' ? str : ("(" + str + ")")));
         // 清空词法分析结果
-        lexer.reset();
+        lexer->reset();
         // 清空AST
         ast.reset();
         // 产生式
-        gen();
+        if (unit.get_pda().empty())
+            gen();
         // 语法分析（LR）
         program();
         //cast::print2(ast.get_root(), 0, std::cout);
@@ -40,12 +39,22 @@ namespace clib {
         return ast.get_root();
     }
 
+    void cparser::reset() {
+        ast_cache_index = 0;
+        state_stack.clear();
+        ast_stack.clear();
+        ast_cache.clear();
+        ast_coll_cache.clear();
+        ast_reduce_cache.clear();
+        state_stack.push_back(0);
+    }
+
     void cparser::next() {
         lexer_t token;
         do {
-            token = lexer.next();
+            token = lexer->next();
             if (token == l_error) {
-                auto err = lexer.recent_error();
+                auto err = lexer->recent_error();
                 printf("[%04d:%03d] %-12s - %s\n",
                        err.line,
                        err.column,
@@ -56,10 +65,10 @@ namespace clib {
 #if 0
         if (token != l_end) {
             qDebug("[%04d:%03d] %-12s - %s\n",
-                   lexer.get_last_line(),
-                   lexer.get_last_column(),
-                   LEX_STRING(lexer.get_type()).c_str(),
-                   lexer.current().c_str());
+                   lexer->get_last_line(),
+                   lexer->get_last_column(),
+                   LEX_STRING(lexer->get_type()).c_str(),
+                   lexer->current().c_str());
         }
 #endif
     }
@@ -210,10 +219,14 @@ namespace clib {
     }
 
     void cparser::program() {
-        next();
+        ast_cache_index = 0;
         state_stack.clear();
         ast_stack.clear();
+        ast_cache.clear();
+        ast_coll_cache.clear();
+        ast_reduce_cache.clear();
         state_stack.push_back(0);
+        next();
         auto &pdas = unit.get_pda();
         auto root = ast.new_node(ast_collection);
         root->data._coll = pdas[0].coll;
@@ -256,7 +269,7 @@ namespace clib {
             if (bk->direction != b_error)
                 for (;;) {
                     auto &current_state = pdas[state];
-                    if (lexer.is_type(l_end)) {
+                    if (lexer->is_type(l_end)) {
                         if (current_state.final) {
                             if (state_stack.empty()) {
                                 bk->direction = b_success;
@@ -325,7 +338,7 @@ namespace clib {
                     }
                     auto &t = trans[trans_id];
                     if (t.type == e_finish) {
-                        if (!lexer.is_type(l_end)) {
+                        if (!lexer->is_type(l_end)) {
 #if TRACE_PARSING
                             std::cout << "parsing redundant code: " << current_state.label << std::endl;
 #endif
@@ -394,44 +407,44 @@ namespace clib {
     }
 
     ast_node *cparser::terminal() {
-        if (lexer.is_type(l_end)) { // 结尾
+        if (lexer->is_type(l_end)) { // 结尾
             error("unexpected token EOF of expression");
         }
         if (ast_cache_index < ast_cache.size()) {
             return ast_cache[ast_cache_index++];
         }
-        if (lexer.is_type(l_operator)) {
+        if (lexer->is_type(l_operator)) {
             auto node = ast.new_node(ast_operator);
-            node->data._op = lexer.get_operator();
+            node->data._op = lexer->get_operator();
             match_operator(node->data._op);
             ast_cache.push_back(node);
             ast_cache_index++;
             return node;
         }
-        if (lexer.is_type(l_keyword)) {
+        if (lexer->is_type(l_keyword)) {
             auto node = ast.new_node(ast_keyword);
-            node->data._keyword = lexer.get_keyword();
+            node->data._keyword = lexer->get_keyword();
             match_keyword(node->data._keyword);
             ast_cache.push_back(node);
             ast_cache_index++;
             return node;
         }
-        if (lexer.is_type(l_identifier)) {
+        if (lexer->is_type(l_identifier)) {
             auto node = ast.new_node(ast_literal);
-            ast.set_str(node, lexer.get_identifier());
+            ast.set_str(node, lexer->get_identifier());
             match_type(l_identifier);
             ast_cache.push_back(node);
             ast_cache_index++;
             return node;
         }
-        if (lexer.is_number()) {
+        if (lexer->is_number()) {
             ast_node *node = nullptr;
-            auto type = lexer.get_type();
+            auto type = lexer->get_type();
             switch (type) {
 #define DEFINE_NODE_INT(t) \
             case l_##t: \
                 node = ast.new_node(ast_##t); \
-                node->data._##t = lexer.get_##t(); \
+                node->data._##t = lexer->get_##t(); \
                 break;
                 DEFINE_NODE_INT(char)
                 DEFINE_NODE_INT(uchar)
@@ -453,18 +466,18 @@ namespace clib {
             ast_cache_index++;
             return node;
         }
-        if (lexer.is_type(l_string)) {
+        if (lexer->is_type(l_string)) {
             std::stringstream ss;
-            ss << lexer.get_string();
+            ss << lexer->get_string();
 #if 0
-            printf("[%04d:%03d] String> %04X '%s'\n", clexer.get_line(), clexer.get_column(), idx, clexer.get_string().c_str());
+            printf("[%04d:%03d] String> %04X '%s'\n", clexer->get_line(), clexer->get_column(), idx, clexer->get_string().c_str());
 #endif
             match_type(l_string);
 
-            while (lexer.is_type(l_string)) {
-                ss << lexer.get_string();
+            while (lexer->is_type(l_string)) {
+                ss << lexer->get_string();
 #if 0
-                printf("[%04d:%03d] String> %04X '%s'\n", clexer.get_line(), clexer.get_column(), idx, clexer.get_string().c_str());
+                printf("[%04d:%03d] String> %04X '%s'\n", clexer->get_line(), clexer->get_column(), idx, clexer->get_string().c_str());
 #endif
                 match_type(l_string);
             }
@@ -594,10 +607,10 @@ namespace clib {
             return cast::ast_equal((ast_t) cache->flag, token->type);
         }
         if (token->type == l_keyword)
-            return lexer.is_keyword(token->value.keyword);
+            return lexer->is_keyword(token->value.keyword);
         if (token->type == l_operator)
-            return lexer.is_operator(token->value.op);
-        return lexer.is_type(token->type);
+            return lexer->is_operator(token->value.op);
+        return lexer->is_type(token->type);
     }
 
     void cparser::expect(bool flag, const string_t &info) {
@@ -607,34 +620,34 @@ namespace clib {
     }
 
     void cparser::match_keyword(keyword_t type) {
-        expect(lexer.is_keyword(type), string_t("expect keyword ") + KEYWORD_STRING(type));
+        expect(lexer->is_keyword(type), string_t("expect keyword ") + KEYWORD_STRING(type));
         next();
     }
 
     void cparser::match_operator(operator_t type) {
-        expect(lexer.is_operator(type), string_t("expect operator " + OPERATOR_STRING(type)));
+        expect(lexer->is_operator(type), string_t("expect operator " + OPERATOR_STRING(type)));
         next();
     }
 
     void cparser::match_type(lexer_t type) {
-        expect(lexer.is_type(type), string_t("expect type " + LEX_STRING(type)));
+        expect(lexer->is_type(type), string_t("expect type " + LEX_STRING(type)));
         next();
     }
 
     void cparser::match_number() {
-        expect(lexer.is_number(), "expect number");
+        expect(lexer->is_number(), "expect number");
         next();
     }
 
     void cparser::match_integer() {
-        expect(lexer.is_integer(), "expect integer");
+        expect(lexer->is_integer(), "expect integer");
         next();
     }
 
     void cparser::error(const string_t &info) {
         std::stringstream ss;
-        ss << '[' << std::setfill('0') << std::setw(4) << lexer.get_line();
-        ss << ':' << std::setfill('0') << std::setw(3) << lexer.get_column();
+        ss << '[' << std::setfill('0') << std::setw(4) << lexer->get_line();
+        ss << ':' << std::setfill('0') << std::setw(3) << lexer->get_column();
         ss << ']' << " PARSER ERROR: " << info;
         throw cexception(ss.str());
     }

@@ -28,20 +28,25 @@ namespace clib {
     void cvm::builtin_load() {
         // Load init code
         auto codes = std::vector<std::string>{
-                R"(def `nil `())",
-                R"(def `cadr (\ `x `(car (cdr x))))",
-                R"(def `caar (\ `x `(car (car x))))",
-                R"(def `cdar (\ `x `(cdr (car x))))",
-                R"(def `cddr (\ `x `(cdr (cdr x))))",
+            R"(def `nil `())",
+            R"(def `__author__ "bajdcc")",
+            R"(def `__project__ "Qlib2d")",
+            R"(def `cadr (\ `x `(car (cdr x))))",
+            R"(def `caar (\ `x `(car (car x))))",
+            R"(def `cdar (\ `x `(cdr (car x))))",
+            R"(def `cddr (\ `x `(cdr (cdr x))))",
+            R"(def `cddr (\ `x `(cdr (cdr x))))",
+            R"((def `range (\ `(a b) `(if (== a b) `nil `(cons a (range (+ a 1) b))))))",
+            R"(def `map (\ `(f L) `(if (null? L) `nil `(cons (f (car L)) (map f (cdr L))))))",
         };
+        cparser p;
         try {
             for (auto &code : codes) {
+                auto cycles = 0;
                 save();
-                cparser p(code);
-                auto root = p.parse();
-                //clib::cast::print(root, 0, std::cout);
-                //std::cout << std::endl;
-                auto val = run(root);
+                auto root = p.parse(code);
+                prepare(root);
+                auto val = run(INT32_MAX, cycles);
 #if SHOW_ALLOCATE_NODE
                 std::cout << "builtin> ";
                 cast::print(root, 0, std::cout);

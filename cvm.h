@@ -23,6 +23,7 @@ namespace clib {
     enum status_t {
         s_ret,
         s_call,
+        s_sleep,
         s_error,
     };
 
@@ -85,7 +86,8 @@ namespace clib {
 
         friend class builtins;
 
-        cval *run(ast_node *root);
+        void prepare(ast_node *node);
+        cval *run(int cycle, int &cycles);
         void gc();
 
         static void print(cval *val, std::ostream &os);
@@ -96,6 +98,7 @@ namespace clib {
         void error(const string_t &info);
 
         void dump();
+        void reset();
 
     private:
         void builtin();
@@ -135,6 +138,8 @@ namespace clib {
         std::vector<cframe *> eval_stack;
         memory_pool<VM_EVAL> eval_mem;
         memory_pool<VM_TMP> eval_tmp;
+        cval *root{nullptr};
+        cval *ret{nullptr};
     };
 }
 

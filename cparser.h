@@ -5,6 +5,7 @@
 #ifndef CMINILANG_PARSER_H
 #define CMINILANG_PARSER_H
 
+#include <memory>
 #include "types.h"
 #include "clexer.h"
 #include "cast.h"
@@ -34,17 +35,18 @@ namespace clib {
 
     class cparser {
     public:
-        explicit cparser(const string_t &str);
+        cparser() = default;
         ~cparser() = default;
 
         cparser(const cparser &) = delete;
         cparser &operator=(const cparser &) = delete;
 
-        ast_node *parse();
+        ast_node *parse(const string_t &str);
         ast_node *root() const;
 
     private:
         void next();
+        void reset();
 
         void gen();
         void program();
@@ -67,7 +69,6 @@ namespace clib {
         void error(const string_t &);
 
     private:
-        lexer_t base_type{l_none};
         std::vector<int> state_stack;
         std::vector<ast_node *> ast_stack;
         std::vector<ast_node *> ast_cache;
@@ -77,7 +78,7 @@ namespace clib {
 
     private:
         cunit unit;
-        clexer lexer;
+        std::unique_ptr<clexer> lexer;
         cast ast;
     };
 }
