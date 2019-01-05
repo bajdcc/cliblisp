@@ -219,13 +219,7 @@ namespace clib {
     }
 
     void cparser::program() {
-        ast_cache_index = 0;
-        state_stack.clear();
-        ast_stack.clear();
-        ast_cache.clear();
-        ast_coll_cache.clear();
-        ast_reduce_cache.clear();
-        state_stack.push_back(0);
+        reset();
         next();
         auto &pdas = unit.get_pda();
         auto root = ast.new_node(ast_collection);
@@ -275,12 +269,6 @@ namespace clib {
                                 bk->direction = b_success;
                                 break;
                             }
-                        } else {
-#if TRACE_PARSING
-                            std::cout << "parsing unexpected EOF: " << current_state.label << std::endl;
-#endif
-                            bk->direction = b_error;
-                            break;
                         }
                     }
                     auto &trans = current_state.trans;

@@ -13,8 +13,8 @@
 namespace clib {
 
     cvm::cvm() {
-        builtin();
         set_free_callback();
+        builtin();
     }
 
     void cvm::builtin() {
@@ -57,6 +57,14 @@ namespace clib {
         strncpy(str, name, len);
         v->val._sub.vm = this;
         v->val._sub.sub = sub;
+        return v;
+    }
+
+    cval *cvm::val_char(char c) {
+        auto v = mem.alloc<cval>();
+        v->type = ast_char;
+        v->val._char = c;
+        v->next = nullptr;
         return v;
     }
 
@@ -428,6 +436,9 @@ namespace clib {
             case ast_double:
                 new_val = val_obj(val->type);
                 std::memcpy((char *) &new_val->val, (char *) &val->val, sizeof(val->val));
+                break;
+            default:
+                error("invalid copy");
                 break;
         }
 #if SHOW_ALLOCATE_NODE

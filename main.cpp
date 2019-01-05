@@ -18,7 +18,6 @@ static clib::decimal dt;
 static clib::decimal dt_inv;
 static bool paused;
 static string_t title;
-clib::cgui gui;
 
 /**
  * 绘制文字
@@ -62,7 +61,7 @@ void display() {
     int h = glutGet(GLUT_WINDOW_HEIGHT); // 窗口的高
     int w = glutGet(GLUT_WINDOW_WIDTH); // 窗口的宽
 
-    gui.draw();
+    clib::cgui::singleton().draw();
 
     // 绘制文字
     draw_text(10, 20, "cliblisp @bajdcc"); // 暂不支持中文

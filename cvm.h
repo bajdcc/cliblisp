@@ -120,6 +120,7 @@ namespace clib {
 
         cval *val_obj(ast_t type);
         cval *val_str(ast_t type, const char *str);
+        cval *val_char(char c);
         cval *val_sub(const char *name, csub sub);
         cval *val_sub(cval *val);
         cval *val_bool(bool flag);

@@ -198,6 +198,8 @@ namespace clib {
                 if (i == ptr) {
                     parent->child = i->next;
                     i->prev->next = parent->child;
+                    i->next->prev = i->prev;
+                    return;
                 } else {
                     i = i->next;
                 }

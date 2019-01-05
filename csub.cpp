@@ -8,6 +8,7 @@
 #include "cvm.h"
 #include "csub.h"
 #include "cparser.h"
+#include "cgui.h"
 
 #define VM_OP(val) (val->val._v.child->next)
 
@@ -29,8 +30,6 @@ namespace clib {
         // Load init code
         auto codes = std::vector<std::string>{
             R"(def `nil `())",
-            R"(def `__author__ "bajdcc")",
-            R"(def `__project__ "Qlib2d")",
             R"(def `cadr (\ `x `(car (cdr x))))",
             R"(def `caar (\ `x `(car (car x))))",
             R"(def `cdar (\ `x `(cdr (car x))))",
@@ -94,8 +93,10 @@ namespace clib {
         ADD_BUILTIN(len);
         ADD_BUILTIN(type);
         ADD_BUILTIN(str);
+        ADD_BUILTIN(word);
         ADD_BUILTIN(print);
 #undef ADD_BUILTIN
+        add_builtin(_env, "ui-put", val_sub("ui-put", builtins::ui_put));
     }
 
     template<ast_t t>
@@ -327,6 +328,7 @@ namespace clib {
                     return vm->call(eval, op, env, &tmp->local);
                 } else {
                     auto tmp = (tmp_bag *) frame->arg;
+                    assert(tmp->local);
                     if (tmp->step == 0) {
                         auto &v = tmp->v;
                         auto &local = tmp->local;
@@ -852,6 +854,38 @@ namespace clib {
         VM_RET(vm->val_str(ast_string, ss.str().c_str()));
     }
 
+    status_t builtins::word(cvm * vm, cframe * frame)
+    {
+        auto &val = frame->val;
+        if (val->val._v.count != 2)
+            vm->error("word requires 1 args");
+        auto op = VM_OP(val);
+        if (op->type != ast_string)
+            vm->error("word requires string");
+        auto s = string_t(op->val._string);
+        auto v = vm->val_obj(ast_qexpr);
+        v->val._v.count = 0;
+        v->val._v.child = nullptr;
+        if (s.empty()) {
+            VM_RET(v);
+        }
+        vm->mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for word\n", v, cast::ast_str(v->type).c_str());
+#endif
+        auto len = s.length();
+        v->val._v.count = len;
+        v->val._v.child = vm->val_char(s[0]);
+        auto local = v->val._v.child;
+        for (auto i = 1; i < len; i++)
+        {
+            local->next = vm->val_char(s[i]);
+            local = local->next;
+        }
+        vm->mem.pop_root();
+        VM_RET(v);
+    }
+
     status_t builtins::print(cvm *vm, cframe *frame) {
         auto &val = frame->val;
         if (val->val._v.count != 2)
@@ -866,6 +900,20 @@ namespace clib {
             s = op->val._string;
         }
         std::cout << s;
+        VM_RET(VM_NIL);
+    }
+
+    // GUI
+
+    status_t builtins::ui_put(cvm *vm, cframe *frame) {
+        auto &val = frame->val;
+        if (val->val._v.count != 2)
+            vm->error("ui-put requires 1 args");
+        auto op = VM_OP(val);
+        if (op->type != ast_char)
+            vm->error("ui-put requires char type");
+        auto c = op->val._char;
+        cgui::singleton().put_char(c);
         VM_RET(VM_NIL);
     }
 }

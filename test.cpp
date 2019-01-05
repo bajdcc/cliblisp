@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     auto failed = 0;
     std::stringstream ss;
     std::string ast, out;
-    int c;
+    int c = 0;
     for (auto &code : codes) {
         vm.save();
         try {
