@@ -81,6 +81,11 @@ namespace clib {
         return builder->optional(this);
     }
 
+    unit &unit::operator~() {
+        assert(t == u_token);
+        return to_ref(builder->copy(this))->set_skip(true);
+    }
+
     unit &unit::init(unit_builder *builder) {
         next = prev = nullptr;
         this->builder = builder;
@@ -104,6 +109,11 @@ namespace clib {
 
     unit_token &unit_token::set_keyword(keyword_t keyword) {
         value.keyword = keyword;
+        return *this;
+    }
+
+    unit_collection &unit_collection::set_skip(bool skip) {
+        this->skip = skip;
         return *this;
     }
 
@@ -139,10 +149,10 @@ namespace clib {
 
     unit *cunit::copy(unit *u) {
         if (u->t == u_token) { // copy token unit
-            return &(*nodes.alloc<unit_collection>()).set_child(u).set_t(u_token_ref).init(this);;
+            return &(*nodes.alloc<unit_collection>()).set_child(u).set_t(u_token_ref).init(this);
         }
         if (u->t == u_rule) { // copy rule unit
-            return &(*nodes.alloc<unit_collection>()).set_child(u).set_t(u_rule_ref).init(this);;
+            return &(*nodes.alloc<unit_collection>()).set_child(u).set_t(u_rule_ref).init(this);
         }
         return u;
     }
@@ -495,8 +505,11 @@ namespace clib {
         auto rec = [&](auto u) { return conv_nga(u); };
         switch (u->t) {
             case u_token_ref:
-            case u_rule_ref:
-                return u->builder->enga(u, u);
+            case u_rule_ref: {
+                auto enga = u->builder->enga(u, u);
+                enga->skip = to_ref(u)->skip;
+                return enga;
+            }
             case u_sequence: {
                 auto enga = u->builder->enga(u, false);
                 enga->data = u;
@@ -540,6 +553,7 @@ namespace clib {
     nga_edge *cunit::enga(unit *node, bool init) {
         auto _enga = nodes.alloc<nga_edge>();
         _enga->data = nullptr;
+        _enga->skip = false;
         if (init) {
             _enga->begin = status();
             _enga->end = status();
@@ -853,7 +867,9 @@ namespace clib {
                 auto out_edges = get_filter_out_edges(epsilon, [](auto it) { return it->data != nullptr; });
                 for (auto &out_edge: out_edges) {
                     auto idx = available_labels_map.at(std::hash<string_t>{}(out_edge->edge->end->label));
-                    connect(status, available_status[idx])->data = out_edge->edge->data;
+                    auto e = connect(status, available_status[idx]);
+                    e->data = out_edge->edge->data;
+                    e->skip = out_edge->edge->skip;
                 }
             }
         }
@@ -956,7 +972,7 @@ namespace clib {
                                 [o](auto it) { return it.nga == o->edge->end; })->pda,
                             true);
                         edge.data = node;
-                        edge.type = e_move;
+                        edge.type = to_ref(node)->skip ? e_pass : e_move;
                         token_set.insert(to_ref(node)->child);
                         decltype(token_set) res{to_ref(node)->child};
                         LA.insert(std::make_pair(&edge, res));
@@ -1103,6 +1119,7 @@ namespace clib {
 
     std::tuple<pda_edge_t, string_t, int> pda_edge_string[] = {
         std::make_tuple(e_shift, "shift", 2),
+        std::make_tuple(e_pass, "pass", 1),
         std::make_tuple(e_move, "move", 1),
         std::make_tuple(e_left_recursion, "recursion", 3),
         std::make_tuple(e_reduce, "reduce", 4),

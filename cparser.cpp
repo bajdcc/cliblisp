@@ -96,24 +96,21 @@ namespace clib {
                         return node;
                     }
                     case c_sexpr:
-                        if (node->child->flag == ast_operator) {
-                            if (node->child->next == node->child->prev) {
-                                node->child = nullptr;
-                                node->flag = ast_sexpr;
-                                return node;
-                            }
-                            return simplify(node->child->next);
-                        }
                         node->child = simplify(node->child);
+                        if (node->child && node->child == node->child->next) {
+                            node->child->flag = ast_sexpr;
+                            return node->child;
+                        }
+                        node->flag = ast_sexpr;
                         return node;
                     case c_qexpr: {
-                        auto q = node->child->next->child;
+                        auto q = node->child->child;
                         if (q->data._coll == c_sexpr) {
                             auto t = simplify(q);
                             t->flag = ast_qexpr;
                             return t;
                         }
-                        q = simplify(node->child->next);
+                        q = simplify(node->child);
                         node->child = q;
                         node->flag = ast_qexpr;
                         return node;
@@ -177,8 +174,8 @@ namespace clib {
 #undef DEF_RULE
         program = list | sexpr;
         list = *list + object;
-        sexpr = _lparan_ + *list + _rparan_;
-        qexpr = _quote_ + object;
+        sexpr = ~_lparan_ + *list + ~_rparan_;
+        qexpr = ~_quote_ + object;
         object = Char | UnsignedChar | Short | UnsignedShort | Integer | UnsignedInteger |
                  Long | UnsignedLong | Float | Double | String | Identifier | sexpr | qexpr;
         unit.gen(&program);
@@ -497,6 +494,8 @@ namespace clib {
         switch (trans.type) {
             case e_shift:
                 break;
+            case e_pass:
+                break;
             case e_move:
                 break;
             case e_left_recursion:
@@ -529,6 +528,18 @@ namespace clib {
 #endif
                 ast_coll_cache.push_back(new_node);
                 ast_stack.push_back(new_node);
+            }
+                break;
+            case e_pass: {
+                bk.ast_ids.insert(ast_cache_index);
+                terminal();
+#if CHECK_AST
+                check_ast(t);
+#endif
+#if DEBUG_AST
+                printf("[DEBUG] Move: parent=%p, child=%p, CS=%d\n", ast_stack.back(), t,
+                       cast::children_size(ast_stack.back()));
+#endif
             }
                 break;
             case e_move: {
