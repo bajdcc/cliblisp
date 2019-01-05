@@ -19,6 +19,11 @@
 
 namespace clib {
 
+    bool strequ(const char * a, const char * b)
+    {
+        return std::strcmp(a, b) == 0;
+    }
+
     static void add_builtin(cenv &env, const char *name, cval *val) {
         env.insert(std::make_pair(name, val));
 #if SHOW_ALLOCATE_NODE
@@ -36,7 +41,8 @@ namespace clib {
             R"(def `cddr (\ `x `(cdr (cdr x))))",
             R"(def `cddr (\ `x `(cdr (cdr x))))",
             R"((def `range (\ `(a b) `(if (== a b) `nil `(cons a (range (+ a 1) b))))))",
-            R"(def `map (\ `(f L) `(if (null? L) `nil `(cons (f (car L)) (map f (cdr L))))))",
+            R"(def `map-i (\ `(f L i) `(if (>= i (len L)) `nil `(begin (f (index L i)) (map-i f L (+ i))))))",
+            R"(def `map (\ `(f L) `(if (null? L) `nil `(map-i f L 0))))",
         };
         cparser p;
         try {
@@ -63,10 +69,24 @@ namespace clib {
         }
     }
 
+    const char *logo() {
+        return R"(
+  .g8"""bgd `7MMF'      `7MMF'`7MM"""Yp, `7MMF'      `7MMF' .M"""bgd `7MM"""Mq.
+.dP'     `M   MM          MM    MM    Yb   MM          MM  ,MI    "Y   MM   `MM.
+dM'       `   MM          MM    MM    dP   MM          MM  `MMb.       MM   ,M9
+MM            MM          MM    MM"""bg.   MM          MM    `YMMNq.   MMmmdM9
+MM.           MM      ,   MM    MM    `Y   MM      ,   MM  .     `MM   MM
+`Mb.     ,'   MM     ,M   MM    MM    ,9   MM     ,M   MM  Mb     dM   MM
+  `"bmmmd'  .JMMmmmmMMM .JMML..JMMmmmd9  .JMMmmmmMMM .JMML.P"Ybmmd"  .JMML.
+
+)";
+    }
+
     void cvm::builtin_init() {
         auto &_env = *global_env->val._env.env;
         add_builtin(_env, "__author__", val_str(ast_string, "bajdcc"));
         add_builtin(_env, "__project__", val_str(ast_string, "cliblisp"));
+        add_builtin(_env, "__logo__", val_str(ast_string, logo()));
         add_builtin(_env, "+", val_sub("+", builtins::add));
         add_builtin(_env, "-", val_sub("-", builtins::sub));
         add_builtin(_env, "*", val_sub("*", builtins::mul));
@@ -91,10 +111,13 @@ namespace clib {
         ADD_BUILTIN(begin);
         ADD_BUILTIN(append);
         ADD_BUILTIN(len);
+        ADD_BUILTIN(index);
         ADD_BUILTIN(type);
         ADD_BUILTIN(str);
         ADD_BUILTIN(word);
         ADD_BUILTIN(print);
+        ADD_BUILTIN(conf);
+        ADD_BUILTIN(attr);
 #undef ADD_BUILTIN
         add_builtin(_env, "ui-put", val_sub("ui-put", builtins::ui_put));
     }
@@ -271,14 +294,14 @@ namespace clib {
     }
 
     static char *sub_name(cval *val) {
-        return (char*)val + sizeof(cval);
+        return (char *) val + sizeof(cval);
     }
 
     status_t cvm::eval_one(cvm *vm, cframe *frame) {
         auto &val = frame->val;
         auto &env = frame->env;
         if (frame->arg == nullptr) {
-            return vm->call(eval, val->val._v.child, env, &(cval *&)frame->arg);
+            return vm->call(eval, val->val._v.child, env, &(cval *&) frame->arg);
         } else {
             VM_RET((cval *) frame->arg);
         }
@@ -455,8 +478,7 @@ namespace clib {
     status_t builtins::list(cvm *vm, cframe *frame) {
         auto &val = frame->val;
         auto op = VM_OP(val);
-        if (val->val._v.count == 2 && op->val._v.count == 0)
-            VM_RET(vm->copy(op));
+        if (val->val._v.count == 2 && op->val._v.count == 0) VM_RET(vm->copy(op));
         auto v = vm->val_obj(ast_qexpr);
         vm->mem.push_root(v);
 #if SHOW_ALLOCATE_NODE
@@ -484,8 +506,7 @@ namespace clib {
         auto op = VM_OP(val);
         if (op->type != ast_qexpr)
             vm->error("car need Q-exp");
-        if (!op->val._v.child)
-            VM_RET(VM_NIL);
+        if (!op->val._v.child) VM_RET(VM_NIL);
         if (op->val._v.child->type == ast_sexpr) {
             VM_RET(vm->copy(op->val._v.child->val._v.child));
         } else {
@@ -633,7 +654,7 @@ namespace clib {
     }
 
     static cval **lambda_env(cval *val) {
-        return (cval **)((char *)val + sizeof(cval));
+        return (cval **) ((char *) val + sizeof(cval));
     }
 
     status_t builtins::call_lambda(cvm *vm, cframe *frame) {
@@ -663,7 +684,7 @@ namespace clib {
             vm->mem.pop_root();
             assert(body->type == ast_qexpr);
             body->type = ast_sexpr;
-            return vm->call(cvm::eval, body, new_env, &(cval *&)frame->arg);
+            return vm->call(cvm::eval, body, new_env, &(cval *&) frame->arg);
         } else {
             auto ret = (cval *) frame->arg;
             body->type = ast_qexpr;
@@ -770,6 +791,27 @@ namespace clib {
         VM_RET(v);
     }
 
+    status_t builtins::index(cvm *vm, cframe *frame) {
+        auto &val = frame->val;
+        if (val->val._v.count != 3)
+            vm->error("index requires 2 args");
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            vm->error("len requires Q-exp for first arg");
+        if (op->next->type != ast_int)
+            vm->error("len requires int for second arg");
+        auto i = op->next->val._int;
+        auto size = op->val._v.count;
+        if (i >= 0 && i < size) {
+            auto node = op->val._v.child;
+            for (int j = 0; j < i; ++j) {
+                node = node->next;
+            }
+            VM_RET(vm->copy(node));
+        }
+        VM_RET(VM_NIL);
+    }
+
     status_t builtins::append(cvm *vm, cframe *frame) {
         auto &val = frame->val;
         auto op = VM_OP(val);
@@ -854,8 +896,7 @@ namespace clib {
         VM_RET(vm->val_str(ast_string, ss.str().c_str()));
     }
 
-    status_t builtins::word(cvm * vm, cframe * frame)
-    {
+    status_t builtins::word(cvm *vm, cframe *frame) {
         auto &val = frame->val;
         if (val->val._v.count != 2)
             vm->error("word requires 1 args");
@@ -877,8 +918,7 @@ namespace clib {
         v->val._v.count = len;
         v->val._v.child = vm->val_char(s[0]);
         auto local = v->val._v.child;
-        for (auto i = 1; i < len; i++)
-        {
+        for (auto i = 1; i < len; i++) {
             local->next = vm->val_char(s[i]);
             local = local->next;
         }
@@ -901,6 +941,73 @@ namespace clib {
         }
         std::cout << s;
         VM_RET(VM_NIL);
+    }
+
+    status_t builtins::conf(cvm *vm, cframe *frame) {
+        auto &val = frame->val;
+        auto i = VM_OP(val);
+        auto not_ret = false;
+        while (i) {
+            if (i->type == ast_qexpr && i->val._v.count >= 1 && i->val._v.child->type == ast_literal) {
+                auto op = i->val._v.child;
+                auto count = i->val._v.count;
+                auto str = op->val._string;
+                if (strequ(str, "cycle") && count == 2 && op->next->type == ast_int) {
+                    auto cycle = op->next->val._int;
+                    cgui::singleton().set_cycle(cycle);
+                } else if (strequ(str, "ticks") && count == 2 && op->next->type == ast_int) {
+                    auto cycle = op->next->val._int;
+                    cgui::singleton().set_ticks(cycle);
+                } else if (strequ(str, "record") && count == 1) {
+                    if (frame->arg != (void *) 1) {
+                        cgui::singleton().record();
+                        frame->arg = (void *) 1;
+                    }
+                } else if (strequ(str, "continue") && count == 1) {
+                    if (frame->arg != (void *) 1) {
+                        cgui::singleton().control(0);
+                        frame->arg = (void *) 1;
+                    }
+                } else if (strequ(str, "break") && count == 1) {
+                    if (frame->arg != (void *) 1) {
+                        cgui::singleton().control(1);
+                        frame->arg = (void *) 1;
+                    }
+                } else if (strequ(str, "wait") && count == 2 && op->next->type == ast_double) {
+                    auto offset = op->next->val._double;
+                    if (!cgui::singleton().reach(offset))
+                        not_ret = true;
+                }
+            }
+            i = i->next;
+        }
+        if (not_ret)
+            return s_sleep;
+        VM_RET(VM_NIL);
+    }
+
+    status_t builtins::attr(cvm *vm, cframe *frame) {
+        auto &val = frame->val;
+        if (val->val._v.count < 2)
+            vm->error("attr requires more than 1 args");
+        auto op = VM_OP(val);
+        if (op->type != ast_qexpr)
+            vm->error("attr requires Q-exp at first");
+        auto v = vm->copy(op);
+        v->val._v.count = val->val._v.count - 1;
+        vm->mem.push_root(v);
+#if SHOW_ALLOCATE_NODE
+        printf("[DEBUG] ALLOC | addr: 0x%p, node: %-10s, for word\n", v, cast::ast_str(v->type).c_str());
+#endif
+        auto i = op->next;
+        auto local = v->val._v.child;
+        while (i) {
+            local->next = vm->copy(i);
+            local = local->next;
+            i = i->next;
+        }
+        vm->mem.pop_root();
+        VM_RET(v);
     }
 
     // GUI

@@ -16,6 +16,10 @@
 
 注：经[Qlib2d](https://github.com/bajdcc/Qlib2d)项目测试，本项目于**x64**环境下也可编译成功。
 
+## 截图
+
+![image](https://raw.githubusercontent.com/bajdcc/cliblisp/master/screenshots/1.png)
+
 ## 文章
 
 - [【Lisp系列】开篇](http://zhuanlan.zhihu.com/p/45897626)
@@ -334,6 +338,7 @@ TEST #52> [PASSED] (apply + (range 1 10))  =>  45
 - [x] 设计语言
     - [x] 使用[C语言文法](https://github.com/antlr/grammars-v4/blob/master/c/C.g4)
     - [x] 实现回溯，解决移进/归约冲突问题，解决回溯的诸多BUG
+    - [x] 实现LISP的循环
 - [ ] LISP虚拟机
     - [x] 创建窗口
     - [ ] 更多内置指令

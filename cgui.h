@@ -8,6 +8,7 @@
 
 #include <array>
 #include <deque>
+#include <chrono>
 #include "types.h"
 #include "cparser.h"
 #include "cvm.h"
@@ -16,7 +17,7 @@
 #define GUI_FONT_W 9
 #define GUI_FONT_H 15
 #define GUI_ROWS 30
-#define GUI_COLS 80
+#define GUI_COLS 84
 #define GUI_SIZE (GUI_ROWS * GUI_COLS)
 #define GUI_CYCLES 50
 #define GUI_TICKS 5
@@ -34,6 +35,14 @@ namespace clib {
         void draw();
 
         void put_char(char c);
+
+        void set_cycle(int cycle);
+        void set_ticks(int ticks);
+
+        void record();
+        bool reach(const decimal &d);
+        void control(int type);
+
     private:
         void tick();
         void draw_text();
@@ -50,10 +59,15 @@ namespace clib {
         cvm vm;
         cparser p;
         bool running{false};
+        int cycle{ GUI_CYCLES };
+        int ticks{ GUI_TICKS };
         int ptr_x{0};
         int ptr_y{0};
         int ptr_mx{0};
         int ptr_my{0};
+        int continues{0};
+        string_t current_code;
+        std::chrono::system_clock::time_point record_now;
     };
 }
 

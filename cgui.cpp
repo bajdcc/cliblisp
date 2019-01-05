@@ -11,7 +11,13 @@ namespace clib {
     cgui::cgui() {
         auto cs = std::vector<string_t>{
             R"(def `put-str (\ `s `(map ui-put (word s))))",
-            R"(put-str "Hello world!\n")",
+            R"(def `ui-put-delay (\ `(c t) `(begin (ui-put c) (conf `(record)) (conf (attr `wait t)))))",
+            R"(def `put-str-delay (\ `(s t) `(map (\ `c `(ui-put-delay c t)) (word s))))",
+            R"(def `(i S) 0 (word __logo__))",
+            R"(conf `(ticks 1000))",
+            R"(if (< i (len S)) `(begin (ui-put (index S i)) (def `i (+ i)) (conf `continue)) `(conf `break))",
+            R"(conf `(ticks 5))",
+            R"(put-str-delay "Hello world!\n" 0.4d)",
             R"(put-str "Welcome to cliblisp by bajdcc!\n")",
         };
         std::copy(cs.begin(), cs.end(), std::back_inserter(codes));
@@ -23,7 +29,7 @@ namespace clib {
     }
 
     void cgui::draw() {
-        for (int i = 0; i < GUI_TICKS; ++i) {
+        for (int i = 0; i < ticks; ++i) {
             tick();
         }
         draw_text();
@@ -61,19 +67,28 @@ namespace clib {
 
     void cgui::tick() {
         auto c = 0;
+        auto error = false;
         if (running) {
-            auto val = vm.run(GUI_CYCLES, c);
-            if (val != nullptr) {
+            try {
+                auto val = vm.run(cycle, c);
+                if (val != nullptr) {
+                    vm.gc();
+                    vm.dump();
+                    running = false;
+                }
+            } catch (const std::exception &e) {
+                error = true;
+                printf("RUNTIME ERROR: %s\n", e.what());
+                vm.restore();
                 vm.gc();
-                vm.dump();
                 running = false;
             }
         } else {
             if (!codes.empty()) {
-                auto code = codes.front();
+                current_code = codes.front();
                 codes.pop_front();
                 try {
-                    auto root = p.parse(code);
+                    auto root = p.parse(current_code);
                     vm.prepare(root);
                     auto val = vm.run(GUI_CYCLES, c);
                     if (val != nullptr) {
@@ -83,10 +98,19 @@ namespace clib {
                         running = true;
                     }
                 } catch (const std::exception &e) {
+                    error = true;
                     printf("RUNTIME ERROR: %s\n", e.what());
                     vm.restore();
                     vm.gc();
                 }
+            }
+        }
+        if (continues > 0) {
+            if (error) {
+                continues = 0;
+                current_code = "";
+            } else {
+                codes.push_front(current_code);
             }
         }
     }
@@ -151,5 +175,30 @@ namespace clib {
 
     void cgui::draw_char(const char &c) {
         buffer[ptr_y][ptr_x] = c;
+    }
+
+    void cgui::set_cycle(int cycle) {
+        this->cycle = cycle;
+    }
+
+    void cgui::set_ticks(int ticks) {
+        this->ticks = ticks;
+    }
+
+    void cgui::record() {
+        record_now = std::chrono::high_resolution_clock::now();
+    }
+
+    bool cgui::reach(const decimal &d) {
+        auto now = std::chrono::high_resolution_clock::now();
+        return std::chrono::duration_cast<std::chrono::duration<decimal>>(now - record_now).count() > d;
+    }
+
+    void cgui::control(int type) {
+        if (type == 0) { // continue
+            continues++;
+        } else if (type == 1) { // break
+            continues = 0;
+        }
     }
 }
